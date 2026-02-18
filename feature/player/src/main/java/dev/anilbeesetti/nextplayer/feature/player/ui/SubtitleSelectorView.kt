@@ -16,9 +16,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -102,28 +104,29 @@ fun BoxScope.SubtitleSelectorView(
             ) {
                 Text(text = stringResource(R.string.open_subtitle))
             }
-            Spacer(modifier = Modifier.size(16.dp))
-            DelayInput(
-                value = subtitleOptionsState.delayMilliseconds,
-                onValueChange = { subtitleOptionsState.setDelay(it) },
-            )
-            Spacer(modifier = Modifier.size(16.dp))
-            SpeedInput(
-                value = subtitleOptionsState.speedMultiplier,
-                onValueChange = { subtitleOptionsState.setSpeed(it) },
-            )
+            if (subtitleTracksState.tracks.any { it.isSelected }) {
+                Spacer(modifier = Modifier.size(16.dp))
+                DelayInput(
+                    player = player,
+                    value = subtitleOptionsState.delayMilliseconds,
+                    onValueChange = { subtitleOptionsState.setDelay(it) },
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun DelayInput(
+    player: Player,
     value: Long,
     onValueChange: (Long) -> Unit,
 ) {
     var valueString by remember {
         mutableStateOf(if (value == 0L) "0" else "%.2f".format(value / 1000.0))
     }
+    var armedMarker by remember { mutableStateOf(SubtitleSyncMarker.NONE) }
+    var armedPositionMs by remember { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(value) {
         val currentValue = valueString.toDoubleOrNull() ?: 0.0
@@ -138,6 +141,8 @@ private fun DelayInput(
         onValueChange = { newValue ->
             if (newValue.isBlank()) {
                 valueString = ""
+                armedMarker = SubtitleSyncMarker.NONE
+                armedPositionMs = null
                 onValueChange(0)
                 return@NumberChooserInput
             }
@@ -159,62 +164,103 @@ private fun DelayInput(
             runCatching {
                 val doubleValue = cleanedValue.toDoubleOrNull() ?: 0.0
                 val milliseconds = (doubleValue * 1000).roundToLong()
+                armedMarker = SubtitleSyncMarker.NONE
+                armedPositionMs = null
                 onValueChange(milliseconds)
             }
         },
         onIncrement = { onValueChange(value + 100) },
         onDecrement = { onValueChange(value - 100) },
     )
+
+    Spacer(modifier = Modifier.size(12.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FilledTonalButton(
+            modifier = Modifier.weight(1f),
+            colors = markerButtonColors(isSelected = armedMarker == SubtitleSyncMarker.HEARD),
+            onClick = {
+                val position = player.currentPosition.takeIf { it >= 0 } ?: return@FilledTonalButton
+                when (armedMarker) {
+                    SubtitleSyncMarker.NONE -> {
+                        armedMarker = SubtitleSyncMarker.HEARD
+                        armedPositionMs = position
+                    }
+                    SubtitleSyncMarker.HEARD -> {
+                        armedMarker = SubtitleSyncMarker.NONE
+                        armedPositionMs = null
+                    }
+                    SubtitleSyncMarker.SEEN -> {
+                        val seenPosition = armedPositionMs ?: return@FilledTonalButton
+                        val heardPosition = position
+                        val delta = heardPosition - seenPosition
+                        onValueChange(value + delta)
+                        armedMarker = SubtitleSyncMarker.NONE
+                        armedPositionMs = null
+                    }
+                }
+            },
+        ) {
+            Text(text = stringResource(R.string.heard))
+        }
+        FilledTonalButton(
+            modifier = Modifier.weight(1f),
+            colors = markerButtonColors(isSelected = armedMarker == SubtitleSyncMarker.SEEN),
+            onClick = {
+                val position = player.currentPosition.takeIf { it >= 0 } ?: return@FilledTonalButton
+                when (armedMarker) {
+                    SubtitleSyncMarker.NONE -> {
+                        armedMarker = SubtitleSyncMarker.SEEN
+                        armedPositionMs = position
+                    }
+                    SubtitleSyncMarker.SEEN -> {
+                        armedMarker = SubtitleSyncMarker.NONE
+                        armedPositionMs = null
+                    }
+                    SubtitleSyncMarker.HEARD -> {
+                        val heardPosition = armedPositionMs ?: return@FilledTonalButton
+                        val seenPosition = position
+                        val delta = heardPosition - seenPosition
+                        onValueChange(value + delta)
+                        armedMarker = SubtitleSyncMarker.NONE
+                        armedPositionMs = null
+                    }
+                }
+            },
+        ) {
+            Text(text = stringResource(R.string.seen))
+        }
+        FilledTonalIconButton(
+            onClick = {
+                armedMarker = SubtitleSyncMarker.NONE
+                armedPositionMs = null
+                onValueChange(0L)
+            },
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_reset),
+                contentDescription = stringResource(R.string.reset),
+            )
+        }
+    }
+}
+
+private enum class SubtitleSyncMarker {
+    NONE,
+    HEARD,
+    SEEN,
 }
 
 @Composable
-private fun SpeedInput(
-    value: Float,
-    onValueChange: (Float) -> Unit,
-) {
-    var valueString by remember {
-        mutableStateOf(if (value == 1f) "1" else "%.2f".format(value))
-    }
-
-    LaunchedEffect(value) {
-        val currentValue = valueString.toFloatOrNull() ?: 0.0
-        if (currentValue == value) return@LaunchedEffect
-        valueString = if (value == 1f) "1" else "%.2f".format(value)
-    }
-
-    NumberChooserInput(
-        title = stringResource(R.string.speed),
-        value = valueString,
-        suffix = { Text(text = "x") },
-        onValueChange = { newValue ->
-            if (newValue.isBlank()) {
-                valueString = ""
-                onValueChange(1f)
-                return@NumberChooserInput
-            }
-
-            val cleanedValue = newValue.trimStart()
-
-            if (cleanedValue == ".") {
-                valueString = cleanedValue
-                return@NumberChooserInput
-            }
-
-            val decimalPattern = "^\\d*\\.?\\d{0,2}$".toRegex()
-            if (!cleanedValue.matches(decimalPattern)) {
-                return@NumberChooserInput
-            }
-
-            valueString = cleanedValue
-
-            runCatching {
-                val floatValue = cleanedValue.toFloatOrNull() ?: 1f
-                onValueChange(floatValue)
-            }
-        },
-        onIncrement = { onValueChange(value + 0.1f) },
-        onDecrement = { onValueChange(value - 0.1f) },
+private fun markerButtonColors(isSelected: Boolean) = if (isSelected) {
+    ButtonDefaults.filledTonalButtonColors(
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
     )
+} else {
+    ButtonDefaults.filledTonalButtonColors()
 }
 
 @Composable

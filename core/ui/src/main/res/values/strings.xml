@@ -269,6 +269,11 @@
     <string name="reset_settings_description">Reset all settings to their default state</string>
     <string name="reset_settings_confirmation">Are you sure you want to reset all settings to their default state?</string>
     <string name="reset">Reset</string>
+    <string name="behind">Behind</string>
+    <string name="ahead">Ahead</string>
+    <string name="heard">Heard</string>
+    <string name="seen">Seen</string>
+    <string name="spotted">Spotted</string>
     <string name="delay">Delay</string>
     <string name="speed">Speed</string>
     <string name="search">Search</string>
