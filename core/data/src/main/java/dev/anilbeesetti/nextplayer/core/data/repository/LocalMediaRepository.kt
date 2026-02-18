@@ -127,12 +127,29 @@ class LocalMediaRepository @Inject constructor(
         )
     }
 
-    override suspend fun updateSubtitleDelay(uri: String, delay: Long) {
+    override suspend fun updateAudioDelay(uri: String, trackIndex: Int, delay: Long) {
         val stateEntity = mediumStateDao.get(uri) ?: MediumStateEntity(uriString = uri)
+        val currentDelays = deserializeDelayMap(stateEntity.audioTrackDelays).toMutableMap()
+        currentDelays[trackIndex] = delay
+
+        mediumStateDao.upsert(
+            mediumState = stateEntity.copy(
+                audioDelayMilliseconds = delay,
+                audioTrackDelays = serializeDelayMap(currentDelays),
+                lastPlayedTime = System.currentTimeMillis(),
+            ),
+        )
+    }
+
+    override suspend fun updateSubtitleDelay(uri: String, trackIndex: Int, delay: Long) {
+        val stateEntity = mediumStateDao.get(uri) ?: MediumStateEntity(uriString = uri)
+        val currentDelays = deserializeDelayMap(stateEntity.subtitleTrackDelays).toMutableMap()
+        currentDelays[trackIndex] = delay
 
         mediumStateDao.upsert(
             mediumState = stateEntity.copy(
                 subtitleDelayMilliseconds = delay,
+                subtitleTrackDelays = serializeDelayMap(currentDelays),
                 lastPlayedTime = System.currentTimeMillis(),
             ),
         )
@@ -147,5 +164,21 @@ class LocalMediaRepository @Inject constructor(
                 lastPlayedTime = System.currentTimeMillis(),
             ),
         )
+    }
+
+    private fun serializeDelayMap(value: Map<Int, Long>): String {
+        return value.entries.sortedBy { it.key }.joinToString(separator = ",") { "${it.key}:${it.value}" }
+    }
+
+    private fun deserializeDelayMap(raw: String): Map<Int, Long> {
+        if (raw.isBlank()) return emptyMap()
+        return raw.split(",")
+            .mapNotNull { pair ->
+                val parts = pair.split(":")
+                val key = parts.getOrNull(0)?.toIntOrNull() ?: return@mapNotNull null
+                val value = parts.getOrNull(1)?.toLongOrNull() ?: return@mapNotNull null
+                key to value
+            }
+            .toMap()
     }
 }

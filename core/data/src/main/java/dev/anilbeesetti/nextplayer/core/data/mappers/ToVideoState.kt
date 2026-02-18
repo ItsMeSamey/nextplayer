@@ -13,7 +13,22 @@ fun MediumStateEntity.toVideoState(): VideoState {
         playbackSpeed = playbackSpeed,
         externalSubs = UriListConverter.fromStringToList(externalSubs),
         videoScale = videoScale,
+        audioDelayMilliseconds = audioDelayMilliseconds,
+        audioTrackDelays = deserializeDelayMap(audioTrackDelays),
         subtitleDelayMilliseconds = subtitleDelayMilliseconds,
+        subtitleTrackDelays = deserializeDelayMap(subtitleTrackDelays),
         subtitleSpeed = subtitleSpeed,
     )
+}
+
+private fun deserializeDelayMap(raw: String): Map<Int, Long> {
+    if (raw.isBlank()) return emptyMap()
+    return raw.split(",")
+        .mapNotNull { pair ->
+            val parts = pair.split(":")
+            val key = parts.getOrNull(0)?.toIntOrNull() ?: return@mapNotNull null
+            val value = parts.getOrNull(1)?.toLongOrNull() ?: return@mapNotNull null
+            key to value
+        }
+        .toMap()
 }
