@@ -12,6 +12,7 @@ import dev.anilbeesetti.nextplayer.core.model.LoopMode
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.model.Video
 import dev.anilbeesetti.nextplayer.core.model.VideoContentScale
+import dev.anilbeesetti.nextplayer.feature.player.state.AudioDelayOptionsEvent
 import dev.anilbeesetti.nextplayer.feature.player.state.SubtitleOptionsEvent
 import dev.anilbeesetti.nextplayer.feature.player.state.VideoZoomEvent
 import javax.inject.Inject
@@ -86,23 +87,28 @@ class PlayerViewModel @Inject constructor(
     fun onSubtitleOptionEvent(event: SubtitleOptionsEvent) {
         when (event) {
             is SubtitleOptionsEvent.DelayChanged -> {
-                updateSubtitleDelay(event.mediaItem.mediaId, event.delay)
-            }
-            is SubtitleOptionsEvent.SpeedChanged -> {
-                updateSubtitleSpeed(event.mediaItem.mediaId, event.speed)
+                updateSubtitleDelay(event.mediaItem.mediaId, event.trackIndex, event.delay)
             }
         }
     }
 
-    private fun updateSubtitleDelay(uri: String, delay: Long) {
-        viewModelScope.launch {
-            mediaRepository.updateSubtitleDelay(uri, delay)
+    fun onAudioDelayOptionEvent(event: AudioDelayOptionsEvent) {
+        when (event) {
+            is AudioDelayOptionsEvent.DelayChanged -> {
+                updateAudioDelay(event.mediaItem.mediaId, event.trackIndex, event.delay)
+            }
         }
     }
 
-    private fun updateSubtitleSpeed(uri: String, speed: Float) {
+    private fun updateAudioDelay(uri: String, trackIndex: Int, delay: Long) {
         viewModelScope.launch {
-            mediaRepository.updateSubtitleSpeed(uri, speed)
+            mediaRepository.updateAudioDelay(uri, trackIndex, delay)
+        }
+    }
+
+    private fun updateSubtitleDelay(uri: String, trackIndex: Int, delay: Long) {
+        viewModelScope.launch {
+            mediaRepository.updateSubtitleDelay(uri, trackIndex, delay)
         }
     }
 }

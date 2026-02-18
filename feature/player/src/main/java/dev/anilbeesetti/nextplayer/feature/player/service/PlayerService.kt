@@ -51,14 +51,20 @@ import dev.anilbeesetti.nextplayer.core.ui.R as coreUiR
 import dev.anilbeesetti.nextplayer.feature.player.PlayerActivity
 import dev.anilbeesetti.nextplayer.feature.player.R
 import dev.anilbeesetti.nextplayer.feature.player.extensions.addAdditionalSubtitleConfiguration
+import dev.anilbeesetti.nextplayer.feature.player.extensions.audioDelayMilliseconds
+import dev.anilbeesetti.nextplayer.feature.player.extensions.audioTrackDelays
 import dev.anilbeesetti.nextplayer.feature.player.extensions.audioTrackIndex
 import dev.anilbeesetti.nextplayer.feature.player.extensions.copy
+import dev.anilbeesetti.nextplayer.feature.player.extensions.getAudioDelayMilliseconds
+import dev.anilbeesetti.nextplayer.feature.player.extensions.isAudioDelaySupported
 import dev.anilbeesetti.nextplayer.feature.player.extensions.getManuallySelectedTrackIndex
 import dev.anilbeesetti.nextplayer.feature.player.extensions.playbackSpeed
 import dev.anilbeesetti.nextplayer.feature.player.extensions.positionMs
+import dev.anilbeesetti.nextplayer.feature.player.extensions.setAudioDelayMilliseconds
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setExtras
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setIsScrubbingModeEnabled
 import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleDelayMilliseconds
+import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleTrackDelays
 import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleSpeed
 import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleTrackIndex
 import dev.anilbeesetti.nextplayer.feature.player.extensions.switchTrack
@@ -112,8 +118,8 @@ class PlayerService : MediaSessionService() {
             mediaItem?.mediaMetadata?.let { metadata ->
                 mediaSession?.player?.run {
                     setPlaybackSpeed(metadata.playbackSpeed ?: playerPreferences.defaultPlaybackSpeed)
-                    playerSpecificSubtitleDelayMilliseconds = metadata.subtitleDelayMilliseconds ?: 0L
                     playerSpecificSubtitleSpeed = metadata.subtitleSpeed ?: 1f
+                    applyTrackSpecificDelays(mediaItem)
                 }
 
                 metadata.positionMs?.takeIf { playerPreferences.resume == Resume.YES }?.let {
@@ -164,6 +170,7 @@ class PlayerService : MediaSessionService() {
 
         override fun onTracksChanged(tracks: Tracks) {
             super.onTracksChanged(tracks)
+            mediaSession?.player?.applyTrackSpecificDelays()
             if (!isMediaItemReady && tracks.groups.isNotEmpty()) {
                 isMediaItemReady = true
 
@@ -210,6 +217,7 @@ class PlayerService : MediaSessionService() {
                     subtitleTrackIndex = subtitleTrackIndex,
                 ),
             )
+            player.applyTrackSpecificDelays()
         }
 
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
@@ -425,6 +433,32 @@ class PlayerService : MediaSessionService() {
                     return@future SessionResult(SessionResult.RESULT_SUCCESS)
                 }
 
+                CustomCommands.GET_AUDIO_DELAY -> {
+                    val audioDelay = mediaSession?.player?.playerSpecificAudioDelayMilliseconds ?: 0
+                    return@future SessionResult(
+                        SessionResult.RESULT_SUCCESS,
+                        Bundle().apply {
+                            putLong(CustomCommands.AUDIO_DELAY_KEY, audioDelay)
+                        },
+                    )
+                }
+
+                CustomCommands.SET_AUDIO_DELAY -> {
+                    val audioDelay = args.getLong(CustomCommands.AUDIO_DELAY_KEY)
+                    mediaSession?.player?.playerSpecificAudioDelayMilliseconds = audioDelay
+                    return@future SessionResult(SessionResult.RESULT_SUCCESS)
+                }
+
+                CustomCommands.GET_AUDIO_DELAY_SUPPORTED -> {
+                    val isSupported = mediaSession?.player?.playerSpecificAudioDelaySupported == true
+                    return@future SessionResult(
+                        SessionResult.RESULT_SUCCESS,
+                        Bundle().apply {
+                            putBoolean(CustomCommands.AUDIO_DELAY_SUPPORTED_KEY, isSupported)
+                        },
+                    )
+                }
+
                 CustomCommands.GET_SUBTITLE_SPEED -> {
                     val subtitleSpeed = mediaSession?.player?.playerSpecificSubtitleSpeed ?: 0f
                     return@future SessionResult(
@@ -587,7 +621,22 @@ class PlayerService : MediaSessionService() {
                 val playbackSpeed = mediaItem.mediaMetadata.playbackSpeed ?: videoState?.playbackSpeed
                 val audioTrackIndex = mediaItem.mediaMetadata.audioTrackIndex ?: videoState?.audioTrackIndex
                 val subtitleTrackIndex = mediaItem.mediaMetadata.subtitleTrackIndex ?: videoState?.subtitleTrackIndex
+                val audioDelay = mediaItem.mediaMetadata.audioDelayMilliseconds ?: videoState?.audioDelayMilliseconds
+                val audioTrackDelays = mediaItem.mediaMetadata.audioTrackDelays.ifEmpty {
+                    videoState?.audioTrackDelays ?: emptyMap()
+                }.toMutableMap().apply {
+                    if (isEmpty() && audioTrackIndex != null && audioTrackIndex >= 0) {
+                        this[audioTrackIndex] = audioDelay ?: 0L
+                    }
+                }
                 val subtitleDelay = mediaItem.mediaMetadata.subtitleDelayMilliseconds ?: videoState?.subtitleDelayMilliseconds
+                val subtitleTrackDelays = mediaItem.mediaMetadata.subtitleTrackDelays.ifEmpty {
+                    videoState?.subtitleTrackDelays ?: emptyMap()
+                }.toMutableMap().apply {
+                    if (isEmpty() && subtitleTrackIndex != null && subtitleTrackIndex >= 0) {
+                        this[subtitleTrackIndex] = subtitleDelay ?: 0L
+                    }
+                }
                 val subtitleSpeed = mediaItem.mediaMetadata.subtitleSpeed ?: videoState?.subtitleSpeed
 
                 mediaItem.buildUpon().apply {
@@ -602,7 +651,10 @@ class PlayerService : MediaSessionService() {
                                 playbackSpeed = playbackSpeed,
                                 audioTrackIndex = audioTrackIndex,
                                 subtitleTrackIndex = subtitleTrackIndex,
+                                audioDelayMilliseconds = audioDelay,
+                                audioTrackDelays = audioTrackDelays,
                                 subtitleDelayMilliseconds = subtitleDelay,
+                                subtitleTrackDelays = subtitleTrackDelays,
                                 subtitleSpeed = subtitleSpeed,
                             )
                         }.build(),
@@ -700,6 +752,28 @@ private var Player.playerSpecificSubtitleDelayMilliseconds: Long
 
 @get:UnstableApi
 @set:UnstableApi
+private var Player.playerSpecificAudioDelayMilliseconds: Long
+    @OptIn(UnstableApi::class)
+    get() = when (this) {
+        is ExoPlayer -> this.getAudioDelayMilliseconds()
+        else -> 0L
+    }
+    set(value) {
+        when (this) {
+            is ExoPlayer -> this.setAudioDelayMilliseconds(value)
+        }
+    }
+
+@get:UnstableApi
+private val Player.playerSpecificAudioDelaySupported: Boolean
+    @OptIn(UnstableApi::class)
+    get() = when (this) {
+        is ExoPlayer -> this.isAudioDelaySupported()
+        else -> false
+    }
+
+@get:UnstableApi
+@set:UnstableApi
 private var Player.playerSpecificSubtitleSpeed: Float
     @OptIn(UnstableApi::class)
     get() = when (this) {
@@ -711,3 +785,24 @@ private var Player.playerSpecificSubtitleSpeed: Float
             is ExoPlayer -> this.subtitleSpeed = value
         }
     }
+
+private fun Player.applyTrackSpecificDelays(mediaItem: MediaItem? = currentMediaItem) {
+    val selectedAudioTrackIndex = getSelectedTrackIndex(C.TRACK_TYPE_AUDIO)
+    val selectedSubtitleTrackIndex = getSelectedTrackIndex(C.TRACK_TYPE_TEXT)
+    val metadata = mediaItem?.mediaMetadata
+
+    playerSpecificAudioDelayMilliseconds = selectedAudioTrackIndex?.let {
+        metadata?.audioTrackDelays?.get(it)
+    } ?: 0L
+
+    playerSpecificSubtitleDelayMilliseconds = selectedSubtitleTrackIndex?.let {
+        metadata?.subtitleTrackDelays?.get(it)
+    } ?: 0L
+}
+
+private fun Player.getSelectedTrackIndex(trackType: @C.TrackType Int): Int? {
+    return currentTracks.groups
+        .filter { it.type == trackType && it.isSupported }
+        .indexOfFirst { it.isSelected }
+        .takeIf { it != -1 }
+}

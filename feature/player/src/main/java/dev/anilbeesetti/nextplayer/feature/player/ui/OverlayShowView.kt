@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.media3.common.Player
 import dev.anilbeesetti.nextplayer.core.model.VideoContentScale
+import dev.anilbeesetti.nextplayer.feature.player.state.AudioDelayOptionsEvent
 import dev.anilbeesetti.nextplayer.feature.player.extensions.noRippleClickable
 import dev.anilbeesetti.nextplayer.feature.player.state.SubtitleOptionsEvent
 
@@ -16,6 +17,7 @@ fun BoxScope.OverlayShowView(
     overlayView: OverlayView?,
     videoContentScale: VideoContentScale,
     onDismiss: () -> Unit = {},
+    onAudioDelayOptionEvent: (AudioDelayOptionsEvent) -> Unit = {},
     onSelectSubtitleClick: () -> Unit = {},
     onSubtitleOptionEvent: (SubtitleOptionsEvent) -> Unit = {},
     onVideoContentScaleChanged: (VideoContentScale) -> Unit = {},
@@ -35,6 +37,7 @@ fun BoxScope.OverlayShowView(
     AudioTrackSelectorView(
         show = overlayView == OverlayView.AUDIO_SELECTOR,
         player = player,
+        onEvent = onAudioDelayOptionEvent,
         onDismiss = onDismiss,
     )
 

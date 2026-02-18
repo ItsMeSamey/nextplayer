@@ -14,6 +14,9 @@ enum class CustomCommands(val customAction: String) {
     GET_AUDIO_SESSION_ID(customAction = "GET_AUDIO_SESSION_ID"),
     GET_SUBTITLE_DELAY(customAction = "GET_SUBTITLE_DELAY"),
     SET_SUBTITLE_DELAY(customAction = "SET_SUBTITLE_DELAY"),
+    GET_AUDIO_DELAY(customAction = "GET_AUDIO_DELAY"),
+    SET_AUDIO_DELAY(customAction = "SET_AUDIO_DELAY"),
+    GET_AUDIO_DELAY_SUPPORTED(customAction = "GET_AUDIO_DELAY_SUPPORTED"),
     GET_SUBTITLE_SPEED(customAction = "GET_SUBTITLE_SPEED"),
     SET_SUBTITLE_SPEED(customAction = "SET_SUBTITLE_SPEED"),
     STOP_PLAYER_SESSION(customAction = "STOP_PLAYER_SESSION"),
@@ -35,6 +38,8 @@ enum class CustomCommands(val customAction: String) {
         const val IS_SCRUBBING_MODE_ENABLED_KEY = "is_scrubbing_mode_enabled"
         const val AUDIO_SESSION_ID_KEY = "audio_session_id"
         const val SUBTITLE_DELAY_KEY = "subtitle_delay"
+        const val AUDIO_DELAY_KEY = "audio_delay"
+        const val AUDIO_DELAY_SUPPORTED_KEY = "audio_delay_supported"
         const val SUBTITLE_SPEED_KEY = "subtitle_speed"
     }
 }
@@ -70,6 +75,23 @@ fun MediaController.setSubtitleDelayMilliseconds(delayMillis: Long) {
         putLong(CustomCommands.SUBTITLE_DELAY_KEY, delayMillis)
     }
     sendCustomCommand(CustomCommands.SET_SUBTITLE_DELAY.sessionCommand, args)
+}
+
+suspend fun MediaController.setAudioDelayMilliseconds(delayMillis: Long) {
+    val args = Bundle().apply {
+        putLong(CustomCommands.AUDIO_DELAY_KEY, delayMillis)
+    }
+    sendCustomCommand(CustomCommands.SET_AUDIO_DELAY.sessionCommand, args).await()
+}
+
+suspend fun MediaController.getAudioDelayMilliseconds(): Long {
+    val result = sendCustomCommand(CustomCommands.GET_AUDIO_DELAY.sessionCommand, Bundle.EMPTY)
+    return result.await().extras.getLong(CustomCommands.AUDIO_DELAY_KEY, 0L)
+}
+
+suspend fun MediaController.getAudioDelaySupported(): Boolean {
+    val result = sendCustomCommand(CustomCommands.GET_AUDIO_DELAY_SUPPORTED.sessionCommand, Bundle.EMPTY)
+    return result.await().extras.getBoolean(CustomCommands.AUDIO_DELAY_SUPPORTED_KEY, false)
 }
 
 suspend fun MediaController.getSubtitleDelayMilliseconds(): Long {
