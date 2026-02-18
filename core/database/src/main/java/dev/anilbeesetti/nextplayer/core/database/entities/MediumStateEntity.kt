@@ -29,14 +29,8 @@ data class MediumStateEntity(
     val externalSubs: String = "",
     @ColumnInfo(name = "video_scale")
     val videoScale: Float = 1f,
-    @ColumnInfo(name = "audio_delay")
-    val audioDelayMilliseconds: Long = 0,
     @ColumnInfo(name = "audio_track_delays")
     val audioTrackDelays: String = "",
-    @ColumnInfo(name = "subtitle_delay")
-    val subtitleDelayMilliseconds: Long = 0,
     @ColumnInfo(name = "subtitle_track_delays")
     val subtitleTrackDelays: String = "",
-    @ColumnInfo(name = "subtitle_speed")
-    val subtitleSpeed: Float = 1f,
 )

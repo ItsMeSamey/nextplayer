@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 4,
-    "identityHash": "81bbaaf0c1259ab32ca50b413f461fdd",
+    "identityHash": "f2b5ec9efdd8cf530d35e0c5c6c8fd45",
     "entities": [
       {
         "tableName": "directories",
@@ -143,7 +143,7 @@
       },
       {
         "tableName": "media_state",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uri` TEXT NOT NULL, `playback_position` INTEGER NOT NULL, `audio_track_index` INTEGER, `subtitle_track_index` INTEGER, `playback_speed` REAL, `last_played_time` INTEGER, `external_subs` TEXT NOT NULL, `video_scale` REAL NOT NULL, `subtitle_delay` INTEGER NOT NULL, `subtitle_speed` REAL NOT NULL, PRIMARY KEY(`uri`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uri` TEXT NOT NULL, `playback_position` INTEGER NOT NULL, `audio_track_index` INTEGER, `subtitle_track_index` INTEGER, `playback_speed` REAL, `last_played_time` INTEGER, `external_subs` TEXT NOT NULL, `video_scale` REAL NOT NULL, `audio_track_delays` TEXT NOT NULL, `subtitle_track_delays` TEXT NOT NULL, PRIMARY KEY(`uri`))",
         "fields": [
           {
             "fieldPath": "uriString",
@@ -190,15 +190,15 @@
             "notNull": true
           },
           {
-            "fieldPath": "subtitleDelayMilliseconds",
-            "columnName": "subtitle_delay",
-            "affinity": "INTEGER",
+            "fieldPath": "audioTrackDelays",
+            "columnName": "audio_track_delays",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
-            "fieldPath": "subtitleSpeed",
-            "columnName": "subtitle_speed",
-            "affinity": "REAL",
+            "fieldPath": "subtitleTrackDelays",
+            "columnName": "subtitle_track_delays",
+            "affinity": "TEXT",
             "notNull": true
           }
         ],
@@ -455,7 +455,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '81bbaaf0c1259ab32ca50b413f461fdd')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f2b5ec9efdd8cf530d35e0c5c6c8fd45')"
     ]
   }
 }
