@@ -51,7 +51,6 @@ import dev.anilbeesetti.nextplayer.core.ui.R as coreUiR
 import dev.anilbeesetti.nextplayer.feature.player.PlayerActivity
 import dev.anilbeesetti.nextplayer.feature.player.R
 import dev.anilbeesetti.nextplayer.feature.player.extensions.addAdditionalSubtitleConfiguration
-import dev.anilbeesetti.nextplayer.feature.player.extensions.audioDelayMilliseconds
 import dev.anilbeesetti.nextplayer.feature.player.extensions.audioTrackDelays
 import dev.anilbeesetti.nextplayer.feature.player.extensions.audioTrackIndex
 import dev.anilbeesetti.nextplayer.feature.player.extensions.copy
@@ -63,16 +62,13 @@ import dev.anilbeesetti.nextplayer.feature.player.extensions.positionMs
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setAudioDelayMilliseconds
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setExtras
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setIsScrubbingModeEnabled
-import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleDelayMilliseconds
 import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleTrackDelays
-import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleSpeed
 import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleTrackIndex
 import dev.anilbeesetti.nextplayer.feature.player.extensions.switchTrack
 import dev.anilbeesetti.nextplayer.feature.player.extensions.uriToSubtitleConfiguration
 import dev.anilbeesetti.nextplayer.feature.player.extensions.videoZoom
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
 import io.github.anilbeesetti.nextlib.media3ext.renderer.subtitleDelayMilliseconds
-import io.github.anilbeesetti.nextlib.media3ext.renderer.subtitleSpeed
 import java.io.ByteArrayOutputStream
 import java.io.File
 import javax.inject.Inject
@@ -118,7 +114,6 @@ class PlayerService : MediaSessionService() {
             mediaItem?.mediaMetadata?.let { metadata ->
                 mediaSession?.player?.run {
                     setPlaybackSpeed(metadata.playbackSpeed ?: playerPreferences.defaultPlaybackSpeed)
-                    playerSpecificSubtitleSpeed = metadata.subtitleSpeed ?: 1f
                     applyTrackSpecificDelays(mediaItem)
                 }
 
@@ -459,22 +454,6 @@ class PlayerService : MediaSessionService() {
                     )
                 }
 
-                CustomCommands.GET_SUBTITLE_SPEED -> {
-                    val subtitleSpeed = mediaSession?.player?.playerSpecificSubtitleSpeed ?: 0f
-                    return@future SessionResult(
-                        SessionResult.RESULT_SUCCESS,
-                        Bundle().apply {
-                            putFloat(CustomCommands.SUBTITLE_SPEED_KEY, subtitleSpeed)
-                        },
-                    )
-                }
-
-                CustomCommands.SET_SUBTITLE_SPEED -> {
-                    val subtitleSpeed = args.getFloat(CustomCommands.SUBTITLE_SPEED_KEY)
-                    mediaSession?.player?.playerSpecificSubtitleSpeed = subtitleSpeed
-                    return@future SessionResult(SessionResult.RESULT_SUCCESS)
-                }
-
                 CustomCommands.STOP_PLAYER_SESSION -> {
                     mediaSession?.run {
                         serviceScope.launch {
@@ -621,23 +600,12 @@ class PlayerService : MediaSessionService() {
                 val playbackSpeed = mediaItem.mediaMetadata.playbackSpeed ?: videoState?.playbackSpeed
                 val audioTrackIndex = mediaItem.mediaMetadata.audioTrackIndex ?: videoState?.audioTrackIndex
                 val subtitleTrackIndex = mediaItem.mediaMetadata.subtitleTrackIndex ?: videoState?.subtitleTrackIndex
-                val audioDelay = mediaItem.mediaMetadata.audioDelayMilliseconds ?: videoState?.audioDelayMilliseconds
                 val audioTrackDelays = mediaItem.mediaMetadata.audioTrackDelays.ifEmpty {
                     videoState?.audioTrackDelays ?: emptyMap()
-                }.toMutableMap().apply {
-                    if (isEmpty() && audioTrackIndex != null && audioTrackIndex >= 0) {
-                        this[audioTrackIndex] = audioDelay ?: 0L
-                    }
                 }
-                val subtitleDelay = mediaItem.mediaMetadata.subtitleDelayMilliseconds ?: videoState?.subtitleDelayMilliseconds
                 val subtitleTrackDelays = mediaItem.mediaMetadata.subtitleTrackDelays.ifEmpty {
                     videoState?.subtitleTrackDelays ?: emptyMap()
-                }.toMutableMap().apply {
-                    if (isEmpty() && subtitleTrackIndex != null && subtitleTrackIndex >= 0) {
-                        this[subtitleTrackIndex] = subtitleDelay ?: 0L
-                    }
                 }
-                val subtitleSpeed = mediaItem.mediaMetadata.subtitleSpeed ?: videoState?.subtitleSpeed
 
                 mediaItem.buildUpon().apply {
                     setSubtitleConfigurations(existingSubConfigurations + subConfigurations)
@@ -651,11 +619,8 @@ class PlayerService : MediaSessionService() {
                                 playbackSpeed = playbackSpeed,
                                 audioTrackIndex = audioTrackIndex,
                                 subtitleTrackIndex = subtitleTrackIndex,
-                                audioDelayMilliseconds = audioDelay,
                                 audioTrackDelays = audioTrackDelays,
-                                subtitleDelayMilliseconds = subtitleDelay,
                                 subtitleTrackDelays = subtitleTrackDelays,
-                                subtitleSpeed = subtitleSpeed,
                             )
                         }.build(),
                     )
@@ -772,19 +737,6 @@ private val Player.playerSpecificAudioDelaySupported: Boolean
         else -> false
     }
 
-@get:UnstableApi
-@set:UnstableApi
-private var Player.playerSpecificSubtitleSpeed: Float
-    @OptIn(UnstableApi::class)
-    get() = when (this) {
-        is ExoPlayer -> this.subtitleSpeed
-        else -> 0f
-    }
-    set(value) {
-        when (this) {
-            is ExoPlayer -> this.subtitleSpeed = value
-        }
-    }
 
 private fun Player.applyTrackSpecificDelays(mediaItem: MediaItem? = currentMediaItem) {
     val selectedAudioTrackIndex = getSelectedTrackIndex(C.TRACK_TYPE_AUDIO)

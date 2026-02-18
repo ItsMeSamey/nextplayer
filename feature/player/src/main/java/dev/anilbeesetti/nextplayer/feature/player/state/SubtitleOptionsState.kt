@@ -85,7 +85,6 @@ class SubtitleOptionsState(
         player.replaceMediaItem(
             player.currentMediaItemIndex,
             currentMediaItem.copy(
-                subtitleDelayMilliseconds = delay,
                 subtitleTrackDelays = updatedTrackDelays,
             ),
         )

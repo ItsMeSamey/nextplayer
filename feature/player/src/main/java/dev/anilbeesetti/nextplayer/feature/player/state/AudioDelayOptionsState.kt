@@ -106,7 +106,6 @@ class AudioDelayOptionsState(
         player.replaceMediaItem(
             player.currentMediaItemIndex,
             currentMediaItem.copy(
-                audioDelayMilliseconds = delay,
                 audioTrackDelays = updatedTrackDelays,
             ),
         )

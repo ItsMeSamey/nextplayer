@@ -134,7 +134,6 @@ class LocalMediaRepository @Inject constructor(
 
         mediumStateDao.upsert(
             mediumState = stateEntity.copy(
-                audioDelayMilliseconds = delay,
                 audioTrackDelays = serializeDelayMap(currentDelays),
                 lastPlayedTime = System.currentTimeMillis(),
             ),
@@ -148,19 +147,7 @@ class LocalMediaRepository @Inject constructor(
 
         mediumStateDao.upsert(
             mediumState = stateEntity.copy(
-                subtitleDelayMilliseconds = delay,
                 subtitleTrackDelays = serializeDelayMap(currentDelays),
-                lastPlayedTime = System.currentTimeMillis(),
-            ),
-        )
-    }
-
-    override suspend fun updateSubtitleSpeed(uri: String, speed: Float) {
-        val stateEntity = mediumStateDao.get(uri) ?: MediumStateEntity(uriString = uri)
-
-        mediumStateDao.upsert(
-            mediumState = stateEntity.copy(
-                subtitleSpeed = speed,
                 lastPlayedTime = System.currentTimeMillis(),
             ),
         )

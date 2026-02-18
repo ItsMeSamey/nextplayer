@@ -59,7 +59,4 @@ class FakeMediaRepository : MediaRepository {
 
     override suspend fun updateSubtitleDelay(uri: String, trackIndex: Int, delay: Long) {
     }
-
-    override suspend fun updateSubtitleSpeed(uri: String, speed: Float) {
-    }
 }

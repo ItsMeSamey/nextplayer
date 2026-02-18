@@ -17,8 +17,6 @@ enum class CustomCommands(val customAction: String) {
     GET_AUDIO_DELAY(customAction = "GET_AUDIO_DELAY"),
     SET_AUDIO_DELAY(customAction = "SET_AUDIO_DELAY"),
     GET_AUDIO_DELAY_SUPPORTED(customAction = "GET_AUDIO_DELAY_SUPPORTED"),
-    GET_SUBTITLE_SPEED(customAction = "GET_SUBTITLE_SPEED"),
-    SET_SUBTITLE_SPEED(customAction = "SET_SUBTITLE_SPEED"),
     STOP_PLAYER_SESSION(customAction = "STOP_PLAYER_SESSION"),
     ;
 
@@ -40,7 +38,6 @@ enum class CustomCommands(val customAction: String) {
         const val SUBTITLE_DELAY_KEY = "subtitle_delay"
         const val AUDIO_DELAY_KEY = "audio_delay"
         const val AUDIO_DELAY_SUPPORTED_KEY = "audio_delay_supported"
-        const val SUBTITLE_SPEED_KEY = "subtitle_speed"
     }
 }
 
@@ -97,18 +94,6 @@ suspend fun MediaController.getAudioDelaySupported(): Boolean {
 suspend fun MediaController.getSubtitleDelayMilliseconds(): Long {
     val result = sendCustomCommand(CustomCommands.GET_SUBTITLE_DELAY.sessionCommand, Bundle.EMPTY)
     return result.await().extras.getLong(CustomCommands.SUBTITLE_DELAY_KEY, 0L)
-}
-
-fun MediaController.setSubtitleSpeed(speed: Float) {
-    val args = Bundle().apply {
-        putFloat(CustomCommands.SUBTITLE_SPEED_KEY, speed)
-    }
-    sendCustomCommand(CustomCommands.SET_SUBTITLE_SPEED.sessionCommand, args)
-}
-
-suspend fun MediaController.getSubtitleSpeed(): Float {
-    val result = sendCustomCommand(CustomCommands.GET_SUBTITLE_SPEED.sessionCommand, Bundle.EMPTY)
-    return result.await().extras.getFloat(CustomCommands.SUBTITLE_SPEED_KEY, 1f)
 }
 
 fun MediaController.stopPlayerSession() {

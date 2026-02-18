@@ -13,11 +13,8 @@ fun MediumStateEntity.toVideoState(): VideoState {
         playbackSpeed = playbackSpeed,
         externalSubs = UriListConverter.fromStringToList(externalSubs),
         videoScale = videoScale,
-        audioDelayMilliseconds = audioDelayMilliseconds,
         audioTrackDelays = deserializeDelayMap(audioTrackDelays),
-        subtitleDelayMilliseconds = subtitleDelayMilliseconds,
         subtitleTrackDelays = deserializeDelayMap(subtitleTrackDelays),
-        subtitleSpeed = subtitleSpeed,
     )
 }
 
