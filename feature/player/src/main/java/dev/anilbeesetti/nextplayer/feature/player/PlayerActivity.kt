@@ -252,6 +252,12 @@ class PlayerActivity : ComponentActivity() {
                             onlineSubtitleQuery = it
                             onlineSubtitleHasSearched = false
                             onlineSubtitleError = null
+                            if (onlineSubtitleResults.isNotEmpty()) {
+                                onlineSubtitleResults = onlineSubtitleSearchEngine.rankForQuery(
+                                    results = onlineSubtitleResults,
+                                    query = it,
+                                )
+                            }
                             resetSourceStates()
                         },
                         onOnlineSubtitleSearch = {
