@@ -79,6 +79,21 @@ the [Issues](https://github.com/anilbeesetti/nextplayer/issues) section.**
 
 Contributions are welcome!
 
+### Build Size Checks
+
+Use the release arm64 split APK as the baseline metric:
+
+```bash
+./gradlew :app:assembleRelease
+./scripts/measure-release-size.sh
+```
+
+You can also pass a custom APK path:
+
+```bash
+./scripts/measure-release-size.sh app/build/outputs/apk/release/app-universal-release-unsigned.apk
+```
+
 ### Translating
 
 You can help translate Next Player on [Hosted Weblate](https://hosted.weblate.org/engage/next-player/).

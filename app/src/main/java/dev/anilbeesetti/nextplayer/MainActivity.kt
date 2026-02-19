@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
@@ -110,6 +111,8 @@ class MainActivity : ComponentActivity() {
 
                     LaunchedEffect(key1 = storagePermissionState.status.isGranted) {
                         if (storagePermissionState.status.isGranted) {
+                            // Let initial composition render before kicking off the storage scan.
+                            withFrameNanos { }
                             synchronizer.startSync()
                         }
                     }

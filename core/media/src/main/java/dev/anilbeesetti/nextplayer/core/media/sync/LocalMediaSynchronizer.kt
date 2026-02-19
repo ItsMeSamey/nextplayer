@@ -27,10 +27,13 @@ import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
@@ -114,9 +117,11 @@ class LocalMediaSynchronizer @Inject constructor(
     }
 
     private suspend fun updateMedia(media: List<MediaVideo>) = withContext(Dispatchers.Default) {
+        val existingMediaByUri = mediumDao.getAllNow().associateBy { it.uriString }
         val mediumEntities = media.map {
             val file = File(it.data)
-            val mediumEntity = mediumDao.get(it.uri.toString())
+            val uriString = it.uri.toString()
+            val mediumEntity = existingMediaByUri[uriString]
             mediumEntity?.copy(
                 path = file.path,
                 name = file.name,
@@ -128,7 +133,7 @@ class LocalMediaSynchronizer @Inject constructor(
                 modified = it.dateModified,
                 parentPath = file.parent!!,
             ) ?: MediumEntity(
-                uriString = it.uri.toString(),
+                uriString = uriString,
                 path = it.data,
                 name = file.name,
                 parentPath = file.parent!!,
@@ -143,20 +148,17 @@ class LocalMediaSynchronizer @Inject constructor(
 
         mediumDao.upsertAll(mediumEntities)
 
-        val currentMediaUris = mediumEntities.map { it.uriString }
-
-        val unwantedMedia = mediumDao.getAllWithInfo().first()
-            .filterNot { it.mediumEntity.uriString in currentMediaUris }
-
-        val unwantedMediaUris = unwantedMedia.map { it.mediumEntity.uriString }
-
-        mediumDao.delete(unwantedMediaUris)
-        mediumStateDao.delete(unwantedMediaUris)
+        val currentMediaUris = mediumEntities.mapTo(mutableSetOf()) { it.uriString }
+        val unwantedMediaUris = existingMediaByUri.keys.filterNot(currentMediaUris::contains)
+        if (unwantedMediaUris.isNotEmpty()) {
+            mediumDao.delete(unwantedMediaUris)
+            mediumStateDao.delete(unwantedMediaUris)
+        }
 
         // Delete unwanted thumbnails
-        unwantedMedia.forEach { media ->
+        unwantedMediaUris.forEach { mediaUri ->
             try {
-                imageLoader.diskCache?.remove(media.mediumEntity.uriString)
+                imageLoader.diskCache?.remove(mediaUri)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -164,19 +166,21 @@ class LocalMediaSynchronizer @Inject constructor(
 
         // Release external subtitle uri permission if not used by any other media
         launch {
-            val currentMediaExternalSubs = mediumEntities.flatMap {
-                val mediaState = mediumStateDao.get(it.uriString) ?: return@flatMap emptyList<String>()
-                UriListConverter.fromStringToList(mediaState.externalSubs)
-            }.toSet()
+            val currentMediaStates = mediumStateDao.getAllByUris(currentMediaUris.toList())
+            val currentMediaExternalSubs = currentMediaStates
+                .flatMap { UriListConverter.fromStringToList(it.externalSubs) }
+                .toSet()
 
-            unwantedMedia.onEach { mediumWithInfo ->
-                val mediumState = mediumWithInfo.mediumStateEntity ?: return@onEach
-                for (sub in UriListConverter.fromStringToList(mediumState.externalSubs)) {
-                    if (sub !in currentMediaExternalSubs) {
-                        try {
-                            context.contentResolver.releasePersistableUriPermission(sub, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        } catch (e: Exception) {
-                            e.printStackTrace()
+            if (unwantedMediaUris.isNotEmpty()) {
+                val unwantedMediaStates = mediumStateDao.getAllByUris(unwantedMediaUris)
+                unwantedMediaStates.forEach { mediumState ->
+                    for (sub in UriListConverter.fromStringToList(mediumState.externalSubs)) {
+                        if (sub !in currentMediaExternalSubs) {
+                            try {
+                                context.contentResolver.releasePersistableUriPermission(sub, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
                         }
                     }
                 }
@@ -184,6 +188,7 @@ class LocalMediaSynchronizer @Inject constructor(
         }
     }
 
+    @OptIn(FlowPreview::class)
     private fun getMediaVideosFlow(
         selection: String? = null,
         selectionArgs: Array<String>? = null,
@@ -199,7 +204,11 @@ class LocalMediaSynchronizer @Inject constructor(
         trySend(getMediaVideo(selection, selectionArgs, sortOrder))
         // close
         awaitClose { context.contentResolver.unregisterContentObserver(observer) }
-    }.flowOn(dispatcher).distinctUntilChanged()
+    }
+        .flowOn(dispatcher)
+        .conflate()
+        .debounce(300)
+        .distinctUntilChanged()
 
     private fun getMediaVideo(
         selection: String?,

@@ -29,6 +29,9 @@ interface MediumDao {
     @Query("SELECT * FROM media")
     fun getAll(): Flow<List<MediumEntity>>
 
+    @Query("SELECT * FROM media")
+    suspend fun getAllNow(): List<MediumEntity>
+
     @Query("SELECT * FROM media WHERE parent_path = :directoryPath")
     fun getAllFromDirectory(directoryPath: String): Flow<List<MediumEntity>>
 

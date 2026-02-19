@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
+    alias(libs.plugins.aboutLibraries)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
@@ -82,7 +83,12 @@ android {
 
     packaging {
         resources {
-            excludes.add("/META-INF/{AL2.0,LGPL2.1}")
+            excludes += setOf(
+                "/META-INF/{AL2.0,LGPL2.1}",
+                "/META-INF/LICENSE*",
+                "/META-INF/NOTICE*",
+                "/META-INF/*.kotlin_module",
+            )
         }
     }
 
@@ -91,6 +97,12 @@ android {
         includeInApk = false
         // Disables dependency metadata when building Android App Bundles.
         includeInBundle = false
+    }
+}
+
+aboutLibraries {
+    export {
+        excludeFields.add("generated")
     }
 }
 
