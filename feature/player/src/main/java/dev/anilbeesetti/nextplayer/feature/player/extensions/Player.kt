@@ -86,8 +86,9 @@ fun Player.addAdditionalSubtitleConfiguration(subtitle: MediaItem.SubtitleConfig
     val index = currentMediaItemIndex
     val positionMs = currentPosition
     val wasPlaying = playWhenReady
-    replaceMediaItem(index, updateMediaItem)
-    seekTo(index, positionMs)
+    addMediaItem(index + 1, updateMediaItem)
+    seekTo(index + 1, positionMs)
+    removeMediaItem(index)
     playWhenReady = wasPlaying
 }
 
@@ -106,8 +107,9 @@ fun Player.removeAdditionalSubtitleConfiguration(subtitleId: String) {
     val index = currentMediaItemIndex
     val positionMs = currentPosition
     val wasPlaying = playWhenReady
-    replaceMediaItem(index, updatedMediaItem)
-    seekTo(index, positionMs)
+    addMediaItem(index + 1, updatedMediaItem)
+    seekTo(index + 1, positionMs)
+    removeMediaItem(index)
     playWhenReady = wasPlaying
 }
 
