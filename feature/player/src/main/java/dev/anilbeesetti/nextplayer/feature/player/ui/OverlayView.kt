@@ -78,12 +78,12 @@ fun BoxScope.OverlayView(
                             .fillMaxWidth(0.45f)
                             .fillMaxHeight()
                     },
-                ),
+                )
+                .imePadding(),
         ) {
             Column(
                 modifier = Modifier
                     .padding(top = 24.dp)
-                    .imePadding()
                     .padding(end = endPadding),
             ) {
                 Row(
