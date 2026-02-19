@@ -52,6 +52,7 @@ class SubtitlePreferencesViewModel @Inject constructor(
             SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceMovieSubtitles -> toggleOnlineSubtitleSourceMovieSubtitles()
             SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceMovieSubtitlesRt -> toggleOnlineSubtitleSourceMovieSubtitlesRt()
             SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourcePodnapisi -> toggleOnlineSubtitleSourcePodnapisi()
+            SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceSubtitlecat -> toggleOnlineSubtitleSourceSubtitlecat()
             SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceSubdl -> toggleOnlineSubtitleSourceSubdl()
             SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceYify -> toggleOnlineSubtitleSourceYify()
         }
@@ -171,6 +172,14 @@ class SubtitlePreferencesViewModel @Inject constructor(
         }
     }
 
+    private fun toggleOnlineSubtitleSourceSubtitlecat() {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(onlineSubtitleSourceSubtitlecatEnabled = !it.onlineSubtitleSourceSubtitlecatEnabled)
+            }
+        }
+    }
+
     private fun toggleOnlineSubtitleSourceSubdl() {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
@@ -197,6 +206,7 @@ data class SubtitlePreferencesUiState(
 sealed interface SubtitlePreferenceDialog {
     data object SubtitleLanguageDialog : SubtitlePreferenceDialog
     data object OnlineSubtitleLanguageDialog : SubtitlePreferenceDialog
+    data object OnlineSubtitleSourcesDialog : SubtitlePreferenceDialog
     data object SubtitleFontDialog : SubtitlePreferenceDialog
     data object SubtitleEncodingDialog : SubtitlePreferenceDialog
 }
@@ -217,6 +227,7 @@ sealed interface SubtitlePreferencesUiEvent {
     data object ToggleOnlineSubtitleSourceMovieSubtitles : SubtitlePreferencesUiEvent
     data object ToggleOnlineSubtitleSourceMovieSubtitlesRt : SubtitlePreferencesUiEvent
     data object ToggleOnlineSubtitleSourcePodnapisi : SubtitlePreferencesUiEvent
+    data object ToggleOnlineSubtitleSourceSubtitlecat : SubtitlePreferencesUiEvent
     data object ToggleOnlineSubtitleSourceSubdl : SubtitlePreferencesUiEvent
     data object ToggleOnlineSubtitleSourceYify : SubtitlePreferencesUiEvent
 }

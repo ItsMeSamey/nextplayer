@@ -4,11 +4,15 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Switch
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
@@ -17,10 +21,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
@@ -125,48 +131,12 @@ private fun SubtitlePreferencesContent(
             Column(
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
             ) {
-                PreferenceSwitchWithDivider(
-                    title = stringResource(R.string.subtitle_source_subdb),
+                ClickablePreferenceItem(
+                    title = stringResource(R.string.online_subtitle_sources),
+                    description = uiState.preferences.enabledSubtitleSourcesSummary(),
                     icon = NextIcons.Search,
-                    isChecked = uiState.preferences.onlineSubtitleSourceSubDbEnabled,
-                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceSubDb) },
+                    onClick = { onEvent(SubtitlePreferencesUiEvent.ShowDialog(SubtitlePreferenceDialog.OnlineSubtitleSourcesDialog)) },
                     isFirstItem = true,
-                )
-                PreferenceSwitchWithDivider(
-                    title = stringResource(R.string.subtitle_source_opensubtitles),
-                    icon = NextIcons.Search,
-                    isChecked = uiState.preferences.onlineSubtitleSourceOpenSubtitlesEnabled,
-                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceOpenSubtitles) },
-                )
-                PreferenceSwitchWithDivider(
-                    title = stringResource(R.string.subtitle_source_moviesubtitles),
-                    icon = NextIcons.Search,
-                    isChecked = uiState.preferences.onlineSubtitleSourceMovieSubtitlesEnabled,
-                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceMovieSubtitles) },
-                )
-                PreferenceSwitchWithDivider(
-                    title = stringResource(R.string.subtitle_source_moviesubtitlesrt),
-                    icon = NextIcons.Search,
-                    isChecked = uiState.preferences.onlineSubtitleSourceMovieSubtitlesRtEnabled,
-                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceMovieSubtitlesRt) },
-                )
-                PreferenceSwitchWithDivider(
-                    title = stringResource(R.string.subtitle_source_podnapisi),
-                    icon = NextIcons.Search,
-                    isChecked = uiState.preferences.onlineSubtitleSourcePodnapisiEnabled,
-                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourcePodnapisi) },
-                )
-                PreferenceSwitchWithDivider(
-                    title = stringResource(R.string.subtitle_source_subdl),
-                    icon = NextIcons.Search,
-                    isChecked = uiState.preferences.onlineSubtitleSourceSubdlEnabled,
-                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceSubdl) },
-                )
-                PreferenceSwitch(
-                    title = stringResource(R.string.subtitle_source_yify),
-                    icon = NextIcons.Search,
-                    isChecked = uiState.preferences.onlineSubtitleSourceYifyEnabled,
-                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceYify) },
                     isLastItem = true,
                 )
             }
@@ -295,6 +265,79 @@ private fun SubtitlePreferencesContent(
                     }
                 }
 
+                SubtitlePreferenceDialog.OnlineSubtitleSourcesDialog -> {
+                    val subtitleSources = listOf(
+                        SourceOption(
+                            title = stringResource(R.string.subtitle_source_subdb),
+                            checked = uiState.preferences.onlineSubtitleSourceSubDbEnabled,
+                            onToggle = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceSubDb) },
+                        ),
+                        SourceOption(
+                            title = stringResource(R.string.subtitle_source_opensubtitles),
+                            checked = uiState.preferences.onlineSubtitleSourceOpenSubtitlesEnabled,
+                            onToggle = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceOpenSubtitles) },
+                        ),
+                        SourceOption(
+                            title = stringResource(R.string.subtitle_source_moviesubtitles),
+                            checked = uiState.preferences.onlineSubtitleSourceMovieSubtitlesEnabled,
+                            onToggle = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceMovieSubtitles) },
+                        ),
+                        SourceOption(
+                            title = stringResource(R.string.subtitle_source_moviesubtitlesrt),
+                            checked = uiState.preferences.onlineSubtitleSourceMovieSubtitlesRtEnabled,
+                            onToggle = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceMovieSubtitlesRt) },
+                        ),
+                        SourceOption(
+                            title = stringResource(R.string.subtitle_source_podnapisi),
+                            checked = uiState.preferences.onlineSubtitleSourcePodnapisiEnabled,
+                            onToggle = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourcePodnapisi) },
+                        ),
+                        SourceOption(
+                            title = stringResource(R.string.subtitle_source_subtitlecat),
+                            checked = uiState.preferences.onlineSubtitleSourceSubtitlecatEnabled,
+                            onToggle = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceSubtitlecat) },
+                        ),
+                        SourceOption(
+                            title = stringResource(R.string.subtitle_source_subdl),
+                            checked = uiState.preferences.onlineSubtitleSourceSubdlEnabled,
+                            onToggle = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceSubdl) },
+                        ),
+                        SourceOption(
+                            title = stringResource(R.string.subtitle_source_yify),
+                            checked = uiState.preferences.onlineSubtitleSourceYifyEnabled,
+                            onToggle = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceYify) },
+                        ),
+                    )
+
+                    OptionsDialog(
+                        text = stringResource(id = R.string.online_subtitle_sources),
+                        onDismissClick = { onEvent(SubtitlePreferencesUiEvent.ShowDialog(null)) },
+                    ) {
+                        items(subtitleSources) { source ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .toggleable(
+                                        value = source.checked,
+                                        onValueChange = { source.onToggle() },
+                                    )
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    modifier = Modifier.weight(1f),
+                                    text = source.title,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                                Switch(
+                                    checked = source.checked,
+                                    onCheckedChange = null,
+                                )
+                            }
+                        }
+                    }
+                }
+
                 SubtitlePreferenceDialog.SubtitleEncodingDialog -> {
                     OptionsDialog(
                         text = stringResource(id = R.string.subtitle_text_encoding),
@@ -329,5 +372,29 @@ private fun SubtitlePreferencesScreenPreview() {
             onEvent = {},
             onNavigateUp = {},
         )
+    }
+}
+
+private data class SourceOption(
+    val title: String,
+    val checked: Boolean,
+    val onToggle: () -> Unit,
+)
+
+private fun PlayerPreferences.enabledSubtitleSourcesSummary(): String {
+    val enabled = buildList {
+        if (onlineSubtitleSourceSubDbEnabled) add("SubDB")
+        if (onlineSubtitleSourceOpenSubtitlesEnabled) add("OpenSubtitles")
+        if (onlineSubtitleSourceMovieSubtitlesEnabled) add("MovieSubtitles")
+        if (onlineSubtitleSourceMovieSubtitlesRtEnabled) add("MovieSubtitlesRT")
+        if (onlineSubtitleSourcePodnapisiEnabled) add("Podnapisi")
+        if (onlineSubtitleSourceSubtitlecatEnabled) add("Subtitlecat")
+        if (onlineSubtitleSourceSubdlEnabled) add("SubDL")
+        if (onlineSubtitleSourceYifyEnabled) add("YIFY")
+    }
+    return if (enabled.isEmpty()) {
+        "None"
+    } else {
+        enabled.joinToString(separator = ", ")
     }
 }
