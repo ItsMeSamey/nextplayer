@@ -18,8 +18,12 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -47,6 +51,7 @@ fun BoxScope.OnlineSubtitleSearchView(
     sourceStatuses: List<SubtitleSourceStatusUi>,
     results: List<OnlineSubtitleResult>,
     downloadedSourceUrls: Set<String>,
+    downloadErrors: Map<String, String>,
     errorMessage: String?,
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
@@ -57,6 +62,7 @@ fun BoxScope.OnlineSubtitleSearchView(
 ) {
     val configuration = LocalConfiguration.current
     val columns = if (configuration.isPortrait) 1 else 2
+    val selectedErrorDetails = remember { mutableStateOf<String?>(null) }
 
     OverlayView(
         show = show,
@@ -135,11 +141,14 @@ fun BoxScope.OnlineSubtitleSearchView(
                     items = results,
                     key = { result -> "${result.id}:${result.downloadUrl.orEmpty()}" },
                 ) { result ->
+                    val sourceKey = result.sourceKey()
                     SubtitleResultRow(
                         result = result,
-                        isDownloaded = result.sourceKey() in downloadedSourceUrls,
+                        isDownloaded = sourceKey in downloadedSourceUrls,
+                        errorDetails = downloadErrors[sourceKey],
                         onDownloadClick = { onDownloadClick(result) },
                         onRemoveClick = { onRemoveDownloadedClick(result) },
+                        onErrorClick = { selectedErrorDetails.value = it },
                     )
                 }
             } else if (!isLoading && hasSearched) {
@@ -148,6 +157,19 @@ fun BoxScope.OnlineSubtitleSearchView(
                 }
             }
         }
+    }
+
+    selectedErrorDetails.value?.let { details ->
+        AlertDialog(
+            onDismissRequest = { selectedErrorDetails.value = null },
+            title = { Text(text = stringResource(R.string.subtitle_download_error_title)) },
+            text = { Text(text = details) },
+            confirmButton = {
+                TextButton(onClick = { selectedErrorDetails.value = null }) {
+                    Text(text = stringResource(R.string.done))
+                }
+            },
+        )
     }
 }
 
@@ -189,8 +211,10 @@ private fun SourceStatusSection(
 private fun SubtitleResultRow(
     result: OnlineSubtitleResult,
     isDownloaded: Boolean,
+    errorDetails: String?,
     onDownloadClick: () -> Unit,
     onRemoveClick: () -> Unit,
+    onErrorClick: (String) -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -214,6 +238,14 @@ private fun SubtitleResultRow(
                 Icon(
                     painter = painterResource(R.drawable.ic_close),
                     contentDescription = stringResource(R.string.delete),
+                )
+            }
+        } else if (!errorDetails.isNullOrBlank()) {
+            FilledTonalIconButton(onClick = { onErrorClick(errorDetails) }) {
+                Text(
+                    text = "!",
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold,
                 )
             }
         } else {

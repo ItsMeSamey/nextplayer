@@ -51,20 +51,45 @@ class MoviesSubtitlesRtProvider : OnlineSubtitleProvider {
     }
 
     override suspend fun download(result: OnlineSubtitleResult): OnlineSubtitleDownloadResult? = withContext(Dispatchers.IO) {
-        val url = result.downloadUrl ?: return@withContext null
-        val response = runCatching { httpGet(url) }.getOrNull() ?: return@withContext null
-        if (response.code !in 200..299 || response.body.isEmpty()) return@withContext null
+        val originalUrl = result.downloadUrl ?: return@withContext null
+        val urlCandidates = buildSet {
+            addAll(buildDownloadUrlCandidates(originalUrl))
+            result.detailsUrl
+                ?.takeIf { it.isNotBlank() }
+                ?.let { details ->
+                    runCatching { fetchMovieSubtitle(result.displayName, details) }
+                        .getOrNull()
+                        .orEmpty()
+                        .forEach { refreshed ->
+                            refreshed.downloadUrl
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let { addAll(buildDownloadUrlCandidates(it)) }
+                        }
+                }
+        }
 
-        val isZip = response.contentType?.contains("zip", ignoreCase = true) == true ||
-            (response.body.size > 3 && response.body[0] == 0x50.toByte() && response.body[1] == 0x4B.toByte())
-        if (isZip) return@withContext firstSubtitleFromZip(response.body)
+        val response = urlCandidates
+            .asSequence()
+            .mapNotNull { candidate ->
+                val current = runCatching { httpGet(candidate) }.getOrNull() ?: return@mapNotNull null
+                if (current.code in 200..299 && current.body.isNotEmpty()) candidate to current else null
+            }
+            .firstOrNull()
+            ?: return@withContext null
+
+        val finalUrl = response.first
+        val finalResponse = response.second
+
+        val isZip = finalResponse.contentType?.contains("zip", ignoreCase = true) == true ||
+            (finalResponse.body.size > 3 && finalResponse.body[0] == 0x50.toByte() && finalResponse.body[1] == 0x4B.toByte())
+        if (isZip) return@withContext firstSubtitleFromZip(finalResponse.body)
 
         val fileName = resolveFileName(
             fallback = "${result.displayName.ifBlank { "subtitle" }}.srt",
-            headers = response.headers,
-            url = url,
+            headers = finalResponse.headers,
+            url = finalUrl,
         )
-        DownloadedSubtitle(fileName = fileName, bytes = response.body)
+        DownloadedSubtitle(fileName = fileName, bytes = finalResponse.body)
     }
 
     private fun fetchMovieSubtitle(title: String, pageUrl: String): List<OnlineSubtitleResult> {
@@ -84,7 +109,7 @@ class MoviesSubtitlesRtProvider : OnlineSubtitleProvider {
             .orEmpty()
         if (link.isBlank()) return emptyList()
 
-        val downloadUrl = if (link.startsWith("http")) link else "https://moviesubtitlesrt.com$link"
+        val downloadUrl = normalizeDownloadUrl(link)
         return listOf(
             OnlineSubtitleResult(
                 id = "moviesubtitlesrt:${downloadUrl.hashCode()}",
@@ -95,6 +120,43 @@ class MoviesSubtitlesRtProvider : OnlineSubtitleProvider {
                 detailsUrl = pageUrl,
             ),
         )
+    }
+
+    private fun buildDownloadUrlCandidates(url: String): List<String> {
+        val normalized = normalizeDownloadUrl(url)
+        return buildList {
+            add(normalized)
+            if (normalized.startsWith("http://", ignoreCase = true)) {
+                add(normalized.replaceFirst("http://", "https://"))
+            }
+            if (normalized.startsWith("https://www.moviesubtitlesrt.com", ignoreCase = true)) {
+                add(normalized.replaceFirst("https://www.moviesubtitlesrt.com", "https://moviesubtitlesrt.com"))
+            }
+            if (normalized.startsWith("http://www.moviesubtitlesrt.com", ignoreCase = true)) {
+                add(normalized.replaceFirst("http://www.moviesubtitlesrt.com", "https://moviesubtitlesrt.com"))
+            }
+        }.distinct()
+    }
+
+    private fun normalizeDownloadUrl(url: String): String {
+        val trimmed = url.trim()
+        if (trimmed.isBlank()) return trimmed
+
+        val absolute = when {
+            trimmed.startsWith("//") -> "https:$trimmed"
+            trimmed.startsWith("/") -> "https://moviesubtitlesrt.com$trimmed"
+            else -> trimmed
+        }
+
+        return when {
+            absolute.startsWith("http://moviesubtitlesrt.com", ignoreCase = true) -> {
+                absolute.replaceFirst("http://", "https://")
+            }
+            absolute.startsWith("http://www.moviesubtitlesrt.com", ignoreCase = true) -> {
+                absolute.replaceFirst("http://www.moviesubtitlesrt.com", "https://moviesubtitlesrt.com")
+            }
+            else -> absolute
+        }
     }
 
     private fun normalizeLanguageCode(value: String): String? {
@@ -115,4 +177,3 @@ class MoviesSubtitlesRtProvider : OnlineSubtitleProvider {
         return byDisplayName
     }
 }
-

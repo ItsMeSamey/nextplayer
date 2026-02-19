@@ -60,7 +60,7 @@ fun BoxScope.SubtitleSelectorView(
                 .selectableGroup(),
         ) {
             subtitleTracksState.tracks.forEachIndexed { index, track ->
-                val removableSubtitleUri = track.removableSubtitleUri()
+                val removableSubtitleUri = track.removableSubtitleUri(player)
                 RadioButtonRow(
                     selected = track.isSelected,
                     text = track.mediaTrackGroup.getName(C.TRACK_TYPE_TEXT, index),
@@ -130,8 +130,19 @@ fun BoxScope.SubtitleSelectorView(
     }
 }
 
-private fun androidx.media3.common.Tracks.Group.removableSubtitleUri(): Uri? {
-    val id = mediaTrackGroup.getFormat(0).id ?: return null
-    val uri = runCatching { Uri.parse(id) }.getOrNull() ?: return null
-    return if (uri.scheme == "file" || uri.scheme == "content") uri else null
+private fun androidx.media3.common.Tracks.Group.removableSubtitleUri(player: Player): Uri? {
+    val format = mediaTrackGroup.getFormat(0)
+    val fromId = format.id
+        ?.let { runCatching { Uri.parse(it) }.getOrNull() }
+        ?.takeIf { it.scheme == "file" || it.scheme == "content" }
+    if (fromId != null) return fromId
+
+    val label = format.label?.trim().orEmpty()
+    if (label.isBlank()) return null
+    val configuration = player.currentMediaItem?.localConfiguration?.subtitleConfigurations
+        ?.firstOrNull { candidate ->
+            candidate.label?.trim().orEmpty() == label &&
+                (candidate.uri.scheme == "file" || candidate.uri.scheme == "content")
+        }
+    return configuration?.uri
 }

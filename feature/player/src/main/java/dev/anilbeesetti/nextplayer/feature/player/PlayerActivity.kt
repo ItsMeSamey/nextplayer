@@ -129,6 +129,7 @@ class PlayerActivity : ComponentActivity() {
             var onlineSubtitleHasSearched by remember { mutableStateOf(false) }
             var onlineSubtitleSearchLoading by remember { mutableStateOf(false) }
             var onlineSubtitleError by remember { mutableStateOf<String?>(null) }
+            var onlineSubtitleDownloadErrors by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
             var onlineSubtitleSearchJob by remember { mutableStateOf<Job?>(null) }
             val enabledSources = enabledOnlineSubtitleSources(uiState.playerPreferences)
             var onlineSubtitleSourceStates by remember(enabledSources) {
@@ -253,6 +254,7 @@ class PlayerActivity : ComponentActivity() {
                             onlineSubtitleResults = emptyList()
                             onlineSubtitleHasSearched = false
                             onlineSubtitleError = null
+                            onlineSubtitleDownloadErrors = emptyMap()
                             resetSourceStates()
                         },
                         onlineSubtitleQuery = onlineSubtitleQuery,
@@ -263,10 +265,12 @@ class PlayerActivity : ComponentActivity() {
                         onlineSubtitleSourceStates = onlineSubtitleSourceStates.values.toList(),
                         onlineSubtitleError = onlineSubtitleError,
                         onlineDownloadedSubtitleSourceUrls = downloadedSubtitleSourceUrls,
+                        onlineSubtitleDownloadErrors = onlineSubtitleDownloadErrors,
                         onOnlineSubtitleQueryChange = {
                             onlineSubtitleQuery = it
                             onlineSubtitleHasSearched = false
                             onlineSubtitleError = null
+                            onlineSubtitleDownloadErrors = emptyMap()
                             if (onlineSubtitleResults.isNotEmpty()) {
                                 onlineSubtitleResults = onlineSubtitleSearchEngine.rankForQuery(
                                     results = onlineSubtitleResults,
@@ -286,9 +290,14 @@ class PlayerActivity : ComponentActivity() {
                             lifecycleScope.launch {
                                 onlineSubtitleSearchLoading = true
                                 onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_search_downloading)
+                                val sourceKey = result.downloadUrl ?: result.id
+                                onlineSubtitleDownloadErrors = onlineSubtitleDownloadErrors - sourceKey
                                 when (val downloadResult = onlineSubtitleSearchEngine.download(result)) {
                                     null -> {
-                                        onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_download_failed)
+                                        onlineSubtitleDownloadErrors = onlineSubtitleDownloadErrors + (
+                                            sourceKey to "Failed to download subtitle from ${result.source}."
+                                            )
+                                        onlineSubtitleError = null
                                     }
 
                                     is BrowserDownloadRequired -> {
@@ -300,7 +309,10 @@ class PlayerActivity : ComponentActivity() {
                                                 ?.getStringExtra(YifiWebViewActivity.EXTRA_CAPTURED_DOWNLOAD_URL)
                                                 .orEmpty()
                                             if (activityResult.resultCode != RESULT_OK || capturedUrl.isBlank()) {
-                                                onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_download_failed)
+                                                onlineSubtitleDownloadErrors = onlineSubtitleDownloadErrors + (
+                                                    sourceKey to "YIFY verification/download was canceled before a subtitle file was captured."
+                                                    )
+                                                onlineSubtitleError = null
                                             } else {
                                                 val capturedCookies = activityResult.data
                                                     ?.getStringExtra(YifiWebViewActivity.EXTRA_CAPTURED_COOKIES)
@@ -318,10 +330,22 @@ class PlayerActivity : ComponentActivity() {
                                                     headers = yifiRequestHeaders(),
                                                 )
                                                 if (downloadedSubtitle == null) {
-                                                    onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_download_failed)
-                                                } else {
-                                                    attachDownloadedSubtitle(result, downloadedSubtitle)
+                                                    onlineSubtitleDownloadErrors = onlineSubtitleDownloadErrors + (
+                                                        sourceKey to "Downloaded link from YIFY could not be fetched using the captured session."
+                                                        )
                                                     onlineSubtitleError = null
+                                                } else {
+                                                    runCatching { attachDownloadedSubtitle(result, downloadedSubtitle) }
+                                                        .onSuccess {
+                                                            onlineSubtitleDownloadErrors = onlineSubtitleDownloadErrors - sourceKey
+                                                            onlineSubtitleError = null
+                                                        }
+                                                        .onFailure { error ->
+                                                            onlineSubtitleDownloadErrors = onlineSubtitleDownloadErrors + (
+                                                                sourceKey to "Subtitle download succeeded but attaching track failed: ${error.message.orEmpty()}"
+                                                                )
+                                                            onlineSubtitleError = null
+                                                        }
                                                 }
                                             }
                                         } else {
@@ -332,8 +356,17 @@ class PlayerActivity : ComponentActivity() {
                                     }
 
                                     is DownloadedSubtitle -> {
-                                        attachDownloadedSubtitle(result, downloadResult)
-                                        onlineSubtitleError = null
+                                        runCatching { attachDownloadedSubtitle(result, downloadResult) }
+                                            .onSuccess {
+                                                onlineSubtitleDownloadErrors = onlineSubtitleDownloadErrors - sourceKey
+                                                onlineSubtitleError = null
+                                            }
+                                            .onFailure { error ->
+                                                onlineSubtitleDownloadErrors = onlineSubtitleDownloadErrors + (
+                                                    sourceKey to "Subtitle download succeeded but attaching track failed: ${error.message.orEmpty()}"
+                                                    )
+                                                onlineSubtitleError = null
+                                            }
                                     }
                                 }
                                 onlineSubtitleSearchLoading = false
@@ -342,6 +375,7 @@ class PlayerActivity : ComponentActivity() {
                         onOnlineSubtitleRemoveDownloadedClick = { result ->
                             lifecycleScope.launch {
                                 val sourceKey = result.downloadUrl ?: result.id
+                                onlineSubtitleDownloadErrors = onlineSubtitleDownloadErrors - sourceKey
                                 val subtitleUriString = mediaRepository.removeDownloadedSubtitle(sourceKey)
                                 if (!subtitleUriString.isNullOrBlank()) runCatching {
                                     val uri = Uri.parse(subtitleUriString)
