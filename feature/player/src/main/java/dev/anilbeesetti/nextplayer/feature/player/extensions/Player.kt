@@ -84,9 +84,11 @@ fun Player.addAdditionalSubtitleConfiguration(subtitle: MediaItem.SubtitleConfig
         .build()
 
     val index = currentMediaItemIndex
-    addMediaItem(index + 1, updateMediaItem)
-    seekToDefaultPosition(index + 1)
-    removeMediaItem(index)
+    val positionMs = currentPosition
+    val wasPlaying = playWhenReady
+    replaceMediaItem(index, updateMediaItem)
+    seekTo(index, positionMs)
+    playWhenReady = wasPlaying
 }
 
 fun Player.removeAdditionalSubtitleConfiguration(subtitleId: String) {
@@ -102,9 +104,11 @@ fun Player.removeAdditionalSubtitleConfiguration(subtitleId: String) {
         .build()
 
     val index = currentMediaItemIndex
-    addMediaItem(index + 1, updatedMediaItem)
-    seekToDefaultPosition(index + 1)
-    removeMediaItem(index)
+    val positionMs = currentPosition
+    val wasPlaying = playWhenReady
+    replaceMediaItem(index, updatedMediaItem)
+    seekTo(index, positionMs)
+    playWhenReady = wasPlaying
 }
 
 @OptIn(UnstableApi::class)
