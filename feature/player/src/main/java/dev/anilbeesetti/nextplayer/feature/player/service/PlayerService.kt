@@ -66,6 +66,7 @@ import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleTrackDelays
 import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleTrackIndex
 import dev.anilbeesetti.nextplayer.feature.player.extensions.switchTrack
 import dev.anilbeesetti.nextplayer.feature.player.extensions.uriToSubtitleConfiguration
+import dev.anilbeesetti.nextplayer.feature.player.extensions.videoTrackIndex
 import dev.anilbeesetti.nextplayer.feature.player.extensions.videoZoom
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
 import io.github.anilbeesetti.nextlib.media3ext.renderer.subtitleDelayMilliseconds
@@ -176,6 +177,9 @@ class PlayerService : MediaSessionService() {
                 mediaSession?.player?.mediaMetadata?.subtitleTrackIndex?.let {
                     mediaSession?.player?.switchTrack(C.TRACK_TYPE_TEXT, it)
                 }
+                mediaSession?.player?.mediaMetadata?.videoTrackIndex?.let {
+                    mediaSession?.player?.switchTrack(C.TRACK_TYPE_VIDEO, it)
+                }
             }
         }
 
@@ -186,6 +190,7 @@ class PlayerService : MediaSessionService() {
 
             val audioTrackIndex = player.getManuallySelectedTrackIndex(C.TRACK_TYPE_AUDIO)
             val subtitleTrackIndex = player.getManuallySelectedTrackIndex(C.TRACK_TYPE_TEXT)
+            val videoTrackIndex = player.getManuallySelectedTrackIndex(C.TRACK_TYPE_VIDEO)
 
             if (audioTrackIndex != null) {
                 serviceScope.launch {
@@ -205,11 +210,21 @@ class PlayerService : MediaSessionService() {
                 }
             }
 
+            if (videoTrackIndex != null) {
+                serviceScope.launch {
+                    mediaRepository.updateMediumVideoTrack(
+                        uri = currentMediaItem.mediaId,
+                        videoTrackIndex = videoTrackIndex,
+                    )
+                }
+            }
+
             player.replaceMediaItem(
                 player.currentMediaItemIndex,
                 currentMediaItem.copy(
                     audioTrackIndex = audioTrackIndex,
                     subtitleTrackIndex = subtitleTrackIndex,
+                    videoTrackIndex = videoTrackIndex,
                 ),
             )
             player.applyTrackSpecificDelays()
@@ -600,6 +615,7 @@ class PlayerService : MediaSessionService() {
                 val playbackSpeed = mediaItem.mediaMetadata.playbackSpeed ?: videoState?.playbackSpeed
                 val audioTrackIndex = mediaItem.mediaMetadata.audioTrackIndex ?: videoState?.audioTrackIndex
                 val subtitleTrackIndex = mediaItem.mediaMetadata.subtitleTrackIndex ?: videoState?.subtitleTrackIndex
+                val videoTrackIndex = mediaItem.mediaMetadata.videoTrackIndex ?: videoState?.videoTrackIndex
                 val audioTrackDelays = mediaItem.mediaMetadata.audioTrackDelays.ifEmpty {
                     videoState?.audioTrackDelays ?: emptyMap()
                 }
@@ -619,6 +635,7 @@ class PlayerService : MediaSessionService() {
                                 playbackSpeed = playbackSpeed,
                                 audioTrackIndex = audioTrackIndex,
                                 subtitleTrackIndex = subtitleTrackIndex,
+                                videoTrackIndex = videoTrackIndex,
                                 audioTrackDelays = audioTrackDelays,
                                 subtitleTrackDelays = subtitleTrackDelays,
                             )

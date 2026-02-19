@@ -180,6 +180,7 @@ abstract class MediaDatabase : RoomDatabase() {
 
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `media_state` ADD COLUMN `video_track_index` INTEGER")
                 db.execSQL("ALTER TABLE `media_state` ADD COLUMN `audio_track_delays` TEXT NOT NULL DEFAULT ''")
                 db.execSQL("ALTER TABLE `media_state` ADD COLUMN `subtitle_track_delays` TEXT NOT NULL DEFAULT ''")
                 db.execSQL("ALTER TABLE `media_state` ADD COLUMN `downloaded_subtitles` TEXT NOT NULL DEFAULT ''")
