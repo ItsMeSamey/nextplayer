@@ -9,6 +9,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
 import dev.anilbeesetti.nextplayer.core.common.Logger
+import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleTrackDelays
+import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleTrackIndex
 import dev.anilbeesetti.nextplayer.feature.player.service.setMediaControllerIsScrubbingModeEnabled
 
 /**
@@ -98,10 +100,40 @@ fun Player.removeAdditionalSubtitleConfiguration(subtitleId: String) {
     val existingSubConfigurations = currentMediaItemLocal.localConfiguration?.subtitleConfigurations ?: emptyList()
     if (existingSubConfigurations.none { it.id == subtitleId }) return
 
+    val textTracks = currentTracks.groups.filter { it.type == C.TRACK_TYPE_TEXT && it.isSupported }
+    val removedTrackIndex = textTracks
+        .indexOfFirst { it.mediaTrackGroup.getFormat(0).id == subtitleId }
+        .takeIf { it >= 0 }
+    val selectedTrackIndex = textTracks
+        .indexOfFirst { it.isSelected }
+        .takeIf { it >= 0 }
+
     val updatedSubConfigurations = existingSubConfigurations.filterNot { it.id == subtitleId }
+    val updatedTrackDelays = removedTrackIndex?.let { removedIndex ->
+        remapDelaysAfterTrackRemoval(
+            delays = currentMediaItemLocal.mediaMetadata.subtitleTrackDelays,
+            removedTrackIndex = removedIndex,
+        )
+    } ?: currentMediaItemLocal.mediaMetadata.subtitleTrackDelays
+    val updatedSelectedTrackIndex = when {
+        removedTrackIndex == null -> currentMediaItemLocal.mediaMetadata.subtitleTrackIndex
+        selectedTrackIndex == null -> currentMediaItemLocal.mediaMetadata.subtitleTrackIndex
+        selectedTrackIndex == removedTrackIndex -> -1
+        selectedTrackIndex > removedTrackIndex -> selectedTrackIndex - 1
+        else -> selectedTrackIndex
+    }
     val updatedMediaItem = currentMediaItemLocal
         .buildUpon()
         .setSubtitleConfigurations(updatedSubConfigurations)
+        .setMediaMetadata(
+            currentMediaItemLocal.mediaMetadata
+                .buildUpon()
+                .setExtras(
+                    subtitleTrackIndex = updatedSelectedTrackIndex,
+                    subtitleTrackDelays = updatedTrackDelays,
+                )
+                .build(),
+        )
         .build()
 
     val index = currentMediaItemIndex
@@ -111,6 +143,22 @@ fun Player.removeAdditionalSubtitleConfiguration(subtitleId: String) {
     seekTo(index + 1, positionMs)
     removeMediaItem(index)
     playWhenReady = wasPlaying
+}
+
+private fun remapDelaysAfterTrackRemoval(
+    delays: Map<Int, Long>,
+    removedTrackIndex: Int,
+): Map<Int, Long> {
+    if (delays.isEmpty()) return emptyMap()
+    return delays.entries
+        .mapNotNull { (index, delay) ->
+            when {
+                index == removedTrackIndex -> null
+                index > removedTrackIndex -> (index - 1) to delay
+                else -> index to delay
+            }
+        }
+        .toMap()
 }
 
 @OptIn(UnstableApi::class)
