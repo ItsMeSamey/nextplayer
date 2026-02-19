@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
@@ -20,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -52,66 +55,86 @@ fun BoxScope.OnlineSubtitleSearchView(
     onRemoveDownloadedClick: (OnlineSubtitleResult) -> Unit,
     onBack: () -> Unit,
 ) {
+    val configuration = LocalConfiguration.current
+    val columns = if (configuration.isPortrait) 1 else 2
+
     OverlayView(
         show = show,
         title = stringResource(R.string.search_subtitles),
+        fullScreen = true,
         onBackClick = onBack,
     ) {
-        Column(
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(columns),
             modifier = Modifier
-                .verticalScroll(rememberScrollState())
+                .weight(1f)
+                .fillMaxWidth()
                 .padding(bottom = 24.dp)
                 .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            OutlinedTextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = query,
-                onValueChange = onQueryChange,
-                label = { Text(text = stringResource(R.string.search)) },
-                singleLine = true,
-            )
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = query,
+                    onValueChange = onQueryChange,
+                    label = { Text(text = stringResource(R.string.search)) },
+                    singleLine = true,
+                )
+            }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                FilledTonalButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = onSearch,
-                    enabled = !isLoading && query.isNotBlank(),
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(text = stringResource(R.string.search))
-                }
-                if (canCancelSearch) {
                     FilledTonalButton(
                         modifier = Modifier.weight(1f),
-                        onClick = onCancelSearch,
+                        onClick = onSearch,
+                        enabled = !isLoading && query.isNotBlank(),
                     ) {
-                        Text(text = stringResource(R.string.cancel))
+                        Text(text = stringResource(R.string.search))
+                    }
+                    if (canCancelSearch) {
+                        FilledTonalButton(
+                            modifier = Modifier.weight(1f),
+                            onClick = onCancelSearch,
+                        ) {
+                            Text(text = stringResource(R.string.cancel))
+                        }
                     }
                 }
             }
 
             if (isLoading) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    CircularProgressIndicator()
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
             }
 
-            SourceStatusSection(sourceStatuses = sourceStatuses)
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                SourceStatusSection(sourceStatuses = sourceStatuses)
+            }
 
             if (!errorMessage.isNullOrBlank()) {
-                Text(
-                    text = errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                )
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
 
             if (results.isNotEmpty()) {
-                results.forEach { result ->
+                items(
+                    items = results,
+                    key = { result -> "${result.id}:${result.downloadUrl.orEmpty()}" },
+                ) { result ->
                     SubtitleResultRow(
                         result = result,
                         isDownloaded = result.sourceKey() in downloadedSourceUrls,
@@ -120,7 +143,7 @@ fun BoxScope.OnlineSubtitleSearchView(
                     )
                 }
             } else if (!isLoading && hasSearched) {
-                if (results.isEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(text = stringResource(R.string.subtitle_search_no_results))
                 }
             }
@@ -180,10 +203,7 @@ private fun SubtitleResultRow(
             Text(text = result.displayName, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.padding(top = 2.dp))
             Text(
-                text = buildString {
-                    append(result.source.label())
-                    result.languageCode?.takeIf { it.isNotBlank() }?.let { append(" • ").append(it) }
-                },
+                text = result.subtitleDetailsText(),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -213,8 +233,25 @@ private fun SubtitleSource.label(): String = when (this) {
     SubtitleSource.MOVIESUBTITLES -> "MovieSubtitles"
     SubtitleSource.MOVIESUBTITLESRT -> "MovieSubtitlesRT"
     SubtitleSource.PODNAPISI -> "Podnapisi"
+    SubtitleSource.SUBTITLECAT -> "Subtitlecat"
     SubtitleSource.SUBDL -> "SubDL"
     SubtitleSource.YIFY -> "YIFY Subtitles"
 }
 
 private fun OnlineSubtitleResult.sourceKey(): String = downloadUrl ?: id
+
+private fun OnlineSubtitleResult.subtitleDetailsText(): String {
+    if (source == SubtitleSource.SUBTITLECAT) {
+        return buildString {
+            append("Subtitlecat")
+            languageCode?.takeIf { it.isNotBlank() }?.let { append(".").append(it) }
+            if (isTranslatable) append(".translatable")
+            originalLanguageCode?.takeIf { it.isNotBlank() }?.let { append(" • original: ").append(it) }
+        }
+    }
+
+    return buildString {
+        append(source.label())
+        languageCode?.takeIf { it.isNotBlank() }?.let { append(" • ").append(it) }
+    }
+}

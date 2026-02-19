@@ -290,6 +290,7 @@
     <string name="subtitle_source_moviesubtitles">MovieSubtitles</string>
     <string name="subtitle_source_moviesubtitlesrt">MovieSubtitlesRT</string>
     <string name="subtitle_source_podnapisi">Podnapisi</string>
+    <string name="subtitle_source_subtitlecat">Subtitlecat</string>
     <string name="subtitle_source_subdl">SubDL</string>
     <string name="subtitle_source_yify">YIFY Subtitles</string>
     <string name="no_online_subtitle_sources_enabled">Enable at least one subtitle source.</string>

@@ -17,10 +17,10 @@ import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -44,6 +44,7 @@ fun BoxScope.OverlayView(
     modifier: Modifier = Modifier,
     show: Boolean,
     title: String,
+    fullScreen: Boolean = false,
     onBackClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -52,34 +53,42 @@ fun BoxScope.OverlayView(
     val endPadding = WindowInsets.safeDrawing
         .asPaddingValues()
         .calculateEndPadding(layoutDirection)
+    val imeBottomPadding = WindowInsets.ime
+        .asPaddingValues()
+        .calculateBottomPadding()
 
     AnimatedVisibility(
-        modifier = Modifier.align(
-            if (configuration.isPortrait) {
-                Alignment.BottomCenter
-            } else {
-                Alignment.CenterEnd
-            },
-        ),
+        modifier = Modifier
+            .align(
+                if (configuration.isPortrait) {
+                    Alignment.BottomCenter
+                } else {
+                    Alignment.CenterEnd
+                },
+            )
+            .padding(bottom = if (configuration.isPortrait) imeBottomPadding else 0.dp),
         visible = show,
         enter = if (configuration.isPortrait) slideInVertically { it } else slideInHorizontally { it },
         exit = if (configuration.isPortrait) slideOutVertically { it } else slideOutHorizontally { it },
     ) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = if (fullScreen) RoundedCornerShape(0.dp) else RoundedCornerShape(16.dp),
             modifier = modifier
                 .then(
-                    if (configuration.isPortrait) {
-                        Modifier
-                            .fillMaxWidth()
-                            .fillMaxHeight(0.45f)
+                    if (fullScreen) {
+                        Modifier.fillMaxSize()
                     } else {
-                        Modifier
-                            .fillMaxWidth(0.45f)
-                            .fillMaxHeight()
+                        if (configuration.isPortrait) {
+                            Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(0.45f)
+                        } else {
+                            Modifier
+                                .fillMaxWidth(0.45f)
+                                .fillMaxHeight()
+                        }
                     },
-                )
-                .imePadding(),
+                ),
         ) {
             Column(
                 modifier = Modifier

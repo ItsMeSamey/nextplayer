@@ -9,7 +9,10 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.jsoup.Jsoup
 
-class YifySubtitlesProvider : OnlineSubtitleProvider {
+class YifySubtitlesProvider(
+    private val requestHeadersProvider: () -> Map<String, String> = { emptyMap() },
+    private val onAuthExpired: () -> Unit = {},
+) : OnlineSubtitleProvider {
     override val source: SubtitleSource = SubtitleSource.YIFY
 
     override suspend fun search(request: SubtitleSearchRequest): List<OnlineSubtitleResult> = withContext(Dispatchers.IO) {
@@ -36,8 +39,10 @@ class YifySubtitlesProvider : OnlineSubtitleProvider {
 
     override suspend fun download(result: OnlineSubtitleResult): OnlineSubtitleDownloadResult? = withContext(Dispatchers.IO) {
         val url = result.downloadUrl ?: return@withContext null
-        val response = runCatching { httpGet(url) }.getOrNull() ?: return@withContext null
+        val headers = requestHeadersProvider()
+        val response = runCatching { httpGet(url, headers = headers) }.getOrNull() ?: return@withContext null
         if (response.code == 403) {
+            onAuthExpired()
             return@withContext BrowserDownloadRequired(url = url)
         }
         if (response.code !in 200..299 || response.body.isEmpty()) return@withContext null
@@ -46,6 +51,7 @@ class YifySubtitlesProvider : OnlineSubtitleProvider {
             (response.body.size > 3 && response.body[0] == 0x50.toByte() && response.body[1] == 0x4B.toByte())
 
         if (!isZip && response.contentType?.contains("text/html", ignoreCase = true) == true) {
+            onAuthExpired()
             return@withContext BrowserDownloadRequired(url = url)
         }
 

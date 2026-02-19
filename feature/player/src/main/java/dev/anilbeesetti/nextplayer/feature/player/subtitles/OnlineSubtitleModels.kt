@@ -8,6 +8,7 @@ enum class SubtitleSource {
     MOVIESUBTITLES,
     MOVIESUBTITLESRT,
     PODNAPISI,
+    SUBTITLECAT,
     SUBDL,
     YIFY,
 }
@@ -24,6 +25,9 @@ data class OnlineSubtitleResult(
     val source: SubtitleSource,
     val displayName: String,
     val languageCode: String? = null,
+    val originalLanguageCode: String? = null,
+    val isTranslatable: Boolean = false,
+    val isNativeSubtitle: Boolean = true,
     val downloadUrl: String? = null,
     val detailsUrl: String? = null,
 )

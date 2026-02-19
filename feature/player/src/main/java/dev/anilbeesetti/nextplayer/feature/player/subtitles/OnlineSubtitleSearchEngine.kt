@@ -55,8 +55,9 @@ class OnlineSubtitleSearchEngine(
         SubtitleSource.MOVIESUBTITLES -> 2
         SubtitleSource.MOVIESUBTITLESRT -> 3
         SubtitleSource.PODNAPISI -> 4
-        SubtitleSource.SUBDL -> 5
-        SubtitleSource.YIFY -> 6
+        SubtitleSource.SUBTITLECAT -> 5
+        SubtitleSource.SUBDL -> 6
+        SubtitleSource.YIFY -> 7
     }
 
     private fun sortAndDistinctResults(
@@ -80,6 +81,8 @@ class OnlineSubtitleSearchEngine(
                         queryTerms = queryTerms,
                         normalizedTitle = normalizedTitle,
                         languageCode = result.languageCode.orEmpty(),
+                        isNativeSubtitle = result.isNativeSubtitle,
+                        isTranslatable = result.isTranslatable,
                     ),
                     sourceRank = sourceRank(result.source),
                     normalizedTitle = normalizedTitle,
@@ -98,6 +101,8 @@ class OnlineSubtitleSearchEngine(
         queryTerms: List<String>,
         normalizedTitle: String,
         languageCode: String,
+        isNativeSubtitle: Boolean,
+        isTranslatable: Boolean,
     ): Int {
         if (normalizedTitle.isBlank()) return 0
         if (normalizedQuery.isBlank()) return 0
@@ -127,6 +132,9 @@ class OnlineSubtitleSearchEngine(
 
         val lengthPenalty = kotlin.math.abs(normalizedTitle.length - normalizedQuery.length).coerceAtMost(120)
         score -= lengthPenalty
+
+        if (isNativeSubtitle) score += 180
+        if (isTranslatable) score -= 120
 
         return score
     }
