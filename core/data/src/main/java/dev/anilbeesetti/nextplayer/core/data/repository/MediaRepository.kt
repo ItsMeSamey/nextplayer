@@ -23,4 +23,7 @@ interface MediaRepository {
     suspend fun addExternalSubtitleToMedium(uri: String, subtitleUri: Uri)
     suspend fun updateAudioDelay(uri: String, trackIndex: Int, delay: Long)
     suspend fun updateSubtitleDelay(uri: String, trackIndex: Int, delay: Long)
+    fun getDownloadedSubtitleSourceUrls(): Flow<Set<String>>
+    suspend fun addDownloadedSubtitle(sourceKey: String, subtitleUri: String)
+    suspend fun removeDownloadedSubtitle(sourceKey: String): String?
 }

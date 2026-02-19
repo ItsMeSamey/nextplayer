@@ -33,4 +33,6 @@ data class MediumStateEntity(
     val audioTrackDelays: String = "",
     @ColumnInfo(name = "subtitle_track_delays")
     val subtitleTrackDelays: String = "",
+    @ColumnInfo(name = "downloaded_subtitles")
+    val downloadedSubtitles: String = "",
 )

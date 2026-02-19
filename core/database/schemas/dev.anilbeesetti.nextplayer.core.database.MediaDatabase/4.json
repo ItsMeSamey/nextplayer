@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 4,
-    "identityHash": "f2b5ec9efdd8cf530d35e0c5c6c8fd45",
+    "identityHash": "2483fd026c5a6ee0bd3ccc78a633e3f1",
     "entities": [
       {
         "tableName": "directories",
@@ -143,7 +143,7 @@
       },
       {
         "tableName": "media_state",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uri` TEXT NOT NULL, `playback_position` INTEGER NOT NULL, `audio_track_index` INTEGER, `subtitle_track_index` INTEGER, `playback_speed` REAL, `last_played_time` INTEGER, `external_subs` TEXT NOT NULL, `video_scale` REAL NOT NULL, `audio_track_delays` TEXT NOT NULL, `subtitle_track_delays` TEXT NOT NULL, PRIMARY KEY(`uri`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uri` TEXT NOT NULL, `playback_position` INTEGER NOT NULL, `audio_track_index` INTEGER, `subtitle_track_index` INTEGER, `playback_speed` REAL, `last_played_time` INTEGER, `external_subs` TEXT NOT NULL, `video_scale` REAL NOT NULL, `audio_track_delays` TEXT NOT NULL, `subtitle_track_delays` TEXT NOT NULL, `downloaded_subtitles` TEXT NOT NULL, PRIMARY KEY(`uri`))",
         "fields": [
           {
             "fieldPath": "uriString",
@@ -198,6 +198,12 @@
           {
             "fieldPath": "subtitleTrackDelays",
             "columnName": "subtitle_track_delays",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "downloadedSubtitles",
+            "columnName": "downloaded_subtitles",
             "affinity": "TEXT",
             "notNull": true
           }
@@ -455,7 +461,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f2b5ec9efdd8cf530d35e0c5c6c8fd45')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2483fd026c5a6ee0bd3ccc78a633e3f1')"
     ]
   }
 }

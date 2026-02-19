@@ -16,7 +16,9 @@ import dev.anilbeesetti.nextplayer.core.model.Folder
 import dev.anilbeesetti.nextplayer.core.model.Video
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import org.json.JSONObject
 
 class LocalMediaRepository @Inject constructor(
     private val mediumDao: MediumDao,
@@ -153,6 +155,45 @@ class LocalMediaRepository @Inject constructor(
         )
     }
 
+    override fun getDownloadedSubtitleSourceUrls(): Flow<Set<String>> {
+        return mediumStateDao.getAsFlow(DOWNLOADED_SUBTITLE_STATE_URI)
+            .map { stateEntity ->
+                deserializeDownloadedSubtitles(stateEntity?.downloadedSubtitles.orEmpty()).keys
+            }
+            .distinctUntilChanged()
+    }
+
+    override suspend fun addDownloadedSubtitle(sourceKey: String, subtitleUri: String) {
+        if (sourceKey.isBlank() || subtitleUri.isBlank()) return
+        val stateEntity = mediumStateDao.get(DOWNLOADED_SUBTITLE_STATE_URI)
+            ?: MediumStateEntity(uriString = DOWNLOADED_SUBTITLE_STATE_URI)
+        val values = deserializeDownloadedSubtitles(stateEntity.downloadedSubtitles).toMutableMap()
+        values[sourceKey] = subtitleUri
+
+        mediumStateDao.upsert(
+            mediumState = stateEntity.copy(
+                downloadedSubtitles = serializeDownloadedSubtitles(values),
+                lastPlayedTime = System.currentTimeMillis(),
+            ),
+        )
+    }
+
+    override suspend fun removeDownloadedSubtitle(sourceKey: String): String? {
+        if (sourceKey.isBlank()) return null
+        val stateEntity = mediumStateDao.get(DOWNLOADED_SUBTITLE_STATE_URI) ?: return null
+        val values = deserializeDownloadedSubtitles(stateEntity.downloadedSubtitles).toMutableMap()
+        val removedSubtitleUri = values.remove(sourceKey) ?: return null
+
+        mediumStateDao.upsert(
+            mediumState = stateEntity.copy(
+                downloadedSubtitles = serializeDownloadedSubtitles(values),
+                lastPlayedTime = System.currentTimeMillis(),
+            ),
+        )
+
+        return removedSubtitleUri
+    }
+
     private fun serializeDelayMap(value: Map<Int, Long>): String {
         return value.entries.sortedBy { it.key }.joinToString(separator = ",") { "${it.key}:${it.value}" }
     }
@@ -167,5 +208,34 @@ class LocalMediaRepository @Inject constructor(
                 key to value
             }
             .toMap()
+    }
+
+    private fun serializeDownloadedSubtitles(values: Map<String, String>): String {
+        val jsonObject = JSONObject()
+        values.forEach { (sourceKey, subtitleUri) ->
+            jsonObject.put(sourceKey, subtitleUri)
+        }
+        return jsonObject.toString()
+    }
+
+    private fun deserializeDownloadedSubtitles(raw: String): Map<String, String> {
+        if (raw.isBlank()) return emptyMap()
+        return runCatching {
+            val jsonObject = JSONObject(raw)
+            jsonObject.keys().asSequence()
+                .mapNotNull { sourceKey ->
+                    val subtitleUri = jsonObject.optString(sourceKey).trim()
+                    if (sourceKey.isBlank() || subtitleUri.isBlank()) {
+                        null
+                    } else {
+                        sourceKey to subtitleUri
+                    }
+                }
+                .toMap()
+        }.getOrDefault(emptyMap())
+    }
+
+    private companion object {
+        const val DOWNLOADED_SUBTITLE_STATE_URI = "__downloaded_subtitles__"
     }
 }

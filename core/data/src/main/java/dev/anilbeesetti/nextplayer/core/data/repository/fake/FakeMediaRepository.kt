@@ -59,4 +59,15 @@ class FakeMediaRepository : MediaRepository {
 
     override suspend fun updateSubtitleDelay(uri: String, trackIndex: Int, delay: Long) {
     }
+
+    override fun getDownloadedSubtitleSourceUrls(): Flow<Set<String>> {
+        return flowOf(emptySet())
+    }
+
+    override suspend fun addDownloadedSubtitle(sourceKey: String, subtitleUri: String) {
+    }
+
+    override suspend fun removeDownloadedSubtitle(sourceKey: String): String? {
+        return null
+    }
 }
