@@ -10,6 +10,7 @@ import dev.anilbeesetti.nextplayer.core.model.VideoContentScale
 import dev.anilbeesetti.nextplayer.feature.player.state.AudioDelayOptionsEvent
 import dev.anilbeesetti.nextplayer.feature.player.extensions.noRippleClickable
 import dev.anilbeesetti.nextplayer.feature.player.state.SubtitleOptionsEvent
+import dev.anilbeesetti.nextplayer.feature.player.subtitles.OnlineSubtitleResult
 
 @Composable
 fun BoxScope.OverlayShowView(
@@ -18,7 +19,24 @@ fun BoxScope.OverlayShowView(
     videoContentScale: VideoContentScale,
     onDismiss: () -> Unit = {},
     onAudioDelayOptionEvent: (AudioDelayOptionsEvent) -> Unit = {},
+    onOpenAudioDelayClick: () -> Unit = {},
     onSelectSubtitleClick: () -> Unit = {},
+    onSearchSubtitleClick: () -> Unit = {},
+    onOpenSubtitleDelayClick: () -> Unit = {},
+    onlineSubtitleQuery: String = "",
+    onlineSubtitleHasSearched: Boolean = false,
+    onlineSubtitleSearchLoading: Boolean = false,
+    canCancelOnlineSubtitleSearch: Boolean = false,
+    onlineSubtitleSourceStates: List<SubtitleSourceStatusUi> = emptyList(),
+    onlineSubtitleResults: List<OnlineSubtitleResult> = emptyList(),
+    onlineDownloadedSubtitleSourceUrls: Set<String> = emptySet(),
+    onlineSubtitleError: String? = null,
+    onOnlineSubtitleQueryChange: (String) -> Unit = {},
+    onOnlineSubtitleSearch: () -> Unit = {},
+    onOnlineSubtitleCancelSearch: () -> Unit = {},
+    onOnlineSubtitleDownloadClick: (OnlineSubtitleResult) -> Unit = {},
+    onOnlineSubtitleRemoveDownloadedClick: (OnlineSubtitleResult) -> Unit = {},
+    onOnlineSubtitleBack: () -> Unit = {},
     onSubtitleOptionEvent: (SubtitleOptionsEvent) -> Unit = {},
     onVideoContentScaleChanged: (VideoContentScale) -> Unit = {},
 ) {
@@ -38,6 +56,7 @@ fun BoxScope.OverlayShowView(
         show = overlayView == OverlayView.AUDIO_SELECTOR,
         player = player,
         onEvent = onAudioDelayOptionEvent,
+        onOpenDelayClick = onOpenAudioDelayClick,
         onDismiss = onDismiss,
     )
 
@@ -45,8 +64,40 @@ fun BoxScope.OverlayShowView(
         show = overlayView == OverlayView.SUBTITLE_SELECTOR,
         player = player,
         onSelectSubtitleClick = onSelectSubtitleClick,
+        onSearchSubtitleClick = onSearchSubtitleClick,
+        onOpenDelayClick = onOpenSubtitleDelayClick,
         onEvent = onSubtitleOptionEvent,
         onDismiss = onDismiss,
+    )
+
+    AudioDelayOverlayView(
+        show = overlayView == OverlayView.AUDIO_DELAY,
+        player = player,
+        onEvent = onAudioDelayOptionEvent,
+    )
+
+    SubtitleDelayOverlayView(
+        show = overlayView == OverlayView.SUBTITLE_DELAY,
+        player = player,
+        onEvent = onSubtitleOptionEvent,
+    )
+
+    OnlineSubtitleSearchView(
+        show = overlayView == OverlayView.ONLINE_SUBTITLE_SEARCH,
+        query = onlineSubtitleQuery,
+        hasSearched = onlineSubtitleHasSearched,
+        isLoading = onlineSubtitleSearchLoading,
+        canCancelSearch = canCancelOnlineSubtitleSearch,
+        sourceStatuses = onlineSubtitleSourceStates,
+        results = onlineSubtitleResults,
+        downloadedSourceUrls = onlineDownloadedSubtitleSourceUrls,
+        errorMessage = onlineSubtitleError,
+        onQueryChange = onOnlineSubtitleQueryChange,
+        onSearch = onOnlineSubtitleSearch,
+        onCancelSearch = onOnlineSubtitleCancelSearch,
+        onDownloadClick = onOnlineSubtitleDownloadClick,
+        onRemoveDownloadedClick = onOnlineSubtitleRemoveDownloadedClick,
+        onBack = onOnlineSubtitleBack,
     )
 
     PlaybackSpeedSelectorView(
@@ -72,7 +123,10 @@ val Configuration.isPortrait: Boolean
 
 enum class OverlayView {
     AUDIO_SELECTOR,
+    AUDIO_DELAY,
     SUBTITLE_SELECTOR,
+    SUBTITLE_DELAY,
+    ONLINE_SUBTITLE_SEARCH,
     PLAYBACK_SPEED,
     VIDEO_CONTENT_SCALE,
     PLAYLIST,

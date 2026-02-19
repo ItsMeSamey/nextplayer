@@ -121,7 +121,7 @@ sealed interface AudioDelayOptionsEvent {
     ) : AudioDelayOptionsEvent
 }
 
-private fun Player.getSelectedTrackIndex(trackType: @C.TrackType Int): Int? {
+private fun Player.getSelectedTrackIndex(trackType: Int): Int? {
     return currentTracks.groups
         .filter { it.type == trackType && it.isSupported }
         .indexOfFirst { it.isSelected }

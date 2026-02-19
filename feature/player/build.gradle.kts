@@ -73,6 +73,7 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.guava)
+    implementation(libs.jsoup)
 
     // Hilt
     implementation(libs.hilt.android)

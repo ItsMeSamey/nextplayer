@@ -80,9 +80,11 @@ import dev.anilbeesetti.nextplayer.feature.player.ui.DoubleTapIndicator
 import dev.anilbeesetti.nextplayer.feature.player.ui.OverlayShowView
 import dev.anilbeesetti.nextplayer.feature.player.ui.OverlayView
 import dev.anilbeesetti.nextplayer.feature.player.ui.SubtitleConfiguration
+import dev.anilbeesetti.nextplayer.feature.player.ui.SubtitleSourceStatusUi
 import dev.anilbeesetti.nextplayer.feature.player.ui.VerticalProgressView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsBottomView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsTopView
+import dev.anilbeesetti.nextplayer.feature.player.subtitles.OnlineSubtitleResult
 import kotlin.time.Duration.Companion.seconds
 
 val LocalControlsVisibilityState = compositionLocalOf<ControlsVisibilityState?> { null }
@@ -95,6 +97,20 @@ fun MediaPlayerScreen(
     playerPreferences: PlayerPreferences,
     modifier: Modifier = Modifier,
     onSelectSubtitleClick: () -> Unit,
+    onSearchSubtitleClick: () -> Unit,
+    onlineSubtitleQuery: String,
+    onlineSubtitleResults: List<OnlineSubtitleResult>,
+    onlineSubtitleHasSearched: Boolean,
+    onlineSubtitleSearchLoading: Boolean,
+    canCancelOnlineSubtitleSearch: Boolean,
+    onlineSubtitleSourceStates: List<SubtitleSourceStatusUi>,
+    onlineSubtitleError: String?,
+    onlineDownloadedSubtitleSourceUrls: Set<String>,
+    onOnlineSubtitleQueryChange: (String) -> Unit,
+    onOnlineSubtitleSearch: () -> Unit,
+    onOnlineSubtitleCancelSearch: () -> Unit,
+    onOnlineSubtitleDownloadClick: (OnlineSubtitleResult) -> Unit,
+    onOnlineSubtitleRemoveDownloadedClick: (OnlineSubtitleResult) -> Unit,
     onBackClick: () -> Unit,
     onPlayInBackgroundClick: () -> Unit,
 ) {
@@ -369,7 +385,27 @@ fun MediaPlayerScreen(
                 videoContentScale = videoZoomAndContentScaleState.videoContentScale,
                 onDismiss = { overlayView = null },
                 onAudioDelayOptionEvent = viewModel::onAudioDelayOptionEvent,
+                onOpenAudioDelayClick = { overlayView = OverlayView.AUDIO_DELAY },
                 onSelectSubtitleClick = onSelectSubtitleClick,
+                onOpenSubtitleDelayClick = { overlayView = OverlayView.SUBTITLE_DELAY },
+                onSearchSubtitleClick = {
+                    onSearchSubtitleClick()
+                    overlayView = OverlayView.ONLINE_SUBTITLE_SEARCH
+                },
+                onlineSubtitleQuery = onlineSubtitleQuery,
+                onlineSubtitleHasSearched = onlineSubtitleHasSearched,
+                onlineSubtitleSearchLoading = onlineSubtitleSearchLoading,
+                canCancelOnlineSubtitleSearch = canCancelOnlineSubtitleSearch,
+                onlineSubtitleSourceStates = onlineSubtitleSourceStates,
+                onlineSubtitleResults = onlineSubtitleResults,
+                onlineDownloadedSubtitleSourceUrls = onlineDownloadedSubtitleSourceUrls,
+                onlineSubtitleError = onlineSubtitleError,
+                onOnlineSubtitleQueryChange = onOnlineSubtitleQueryChange,
+                onOnlineSubtitleSearch = onOnlineSubtitleSearch,
+                onOnlineSubtitleCancelSearch = onOnlineSubtitleCancelSearch,
+                onOnlineSubtitleDownloadClick = onOnlineSubtitleDownloadClick,
+                onOnlineSubtitleRemoveDownloadedClick = onOnlineSubtitleRemoveDownloadedClick,
+                onOnlineSubtitleBack = { overlayView = OverlayView.SUBTITLE_SELECTOR },
                 onSubtitleOptionEvent = viewModel::onSubtitleOptionEvent,
                 onVideoContentScaleChanged = { videoZoomAndContentScaleState.onVideoContentScaleChanged(it) },
             )
@@ -413,7 +449,11 @@ fun MediaPlayerScreen(
 
     BackHandler {
         if (overlayView != null) {
-            overlayView = null
+            overlayView = if (overlayView == OverlayView.ONLINE_SUBTITLE_SEARCH) {
+                OverlayView.SUBTITLE_SELECTOR
+            } else {
+                null
+            }
         } else {
             onBackClick()
         }

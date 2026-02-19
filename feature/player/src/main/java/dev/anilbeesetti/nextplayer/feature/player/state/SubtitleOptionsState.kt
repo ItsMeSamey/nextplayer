@@ -37,9 +37,9 @@ fun rememberSubtitleOptionsState(
 
 @Stable
 class SubtitleOptionsState(
-    val player: Player,
-    val scope: CoroutineScope,
-    val onEvent: (SubtitleOptionsEvent) -> Unit = {},
+    private val player: Player,
+    private val scope: CoroutineScope,
+    private val onEvent: (SubtitleOptionsEvent) -> Unit = {},
 ) {
 
     var delayMilliseconds: Long by mutableLongStateOf(0L)
@@ -60,7 +60,7 @@ class SubtitleOptionsState(
     suspend fun observe() {
         updateSubtitleDelayMilliseconds()
         player.listen { events ->
-            if (events.containsAny(Player.EVENT_TRACKS_CHANGED, Player.EVENT_CUES)) {
+            if (events.containsAny(Player.EVENT_TRACKS_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_CUES)) {
                 scope.launch {
                     updateSubtitleDelayMilliseconds()
                 }
@@ -72,7 +72,7 @@ class SubtitleOptionsState(
         delayMilliseconds = when (player) {
             is MediaController -> player.getSubtitleDelayMilliseconds()
             is ExoPlayer -> player.subtitleDelayMilliseconds
-            else -> return
+            else -> 0L
         }
     }
 
