@@ -6,6 +6,8 @@ enum class SubtitleSource {
     SUBDB,
     OPENSUBTITLES,
     MOVIESUBTITLES,
+    MOVIESUBTITLESRT,
+    PODNAPISI,
     SUBDL,
     YIFY,
 }
@@ -26,7 +28,13 @@ data class OnlineSubtitleResult(
     val detailsUrl: String? = null,
 )
 
+sealed interface OnlineSubtitleDownloadResult
+
 data class DownloadedSubtitle(
     val fileName: String,
     val bytes: ByteArray,
-)
+) : OnlineSubtitleDownloadResult
+
+data class BrowserDownloadRequired(
+    val url: String,
+) : OnlineSubtitleDownloadResult

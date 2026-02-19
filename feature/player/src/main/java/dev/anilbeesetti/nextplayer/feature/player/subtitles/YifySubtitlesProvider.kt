@@ -34,13 +34,20 @@ class YifySubtitlesProvider : OnlineSubtitleProvider {
             .take(120)
     }
 
-    override suspend fun download(result: OnlineSubtitleResult): DownloadedSubtitle? = withContext(Dispatchers.IO) {
+    override suspend fun download(result: OnlineSubtitleResult): OnlineSubtitleDownloadResult? = withContext(Dispatchers.IO) {
         val url = result.downloadUrl ?: return@withContext null
         val response = runCatching { httpGet(url) }.getOrNull() ?: return@withContext null
+        if (response.code == 403) {
+            return@withContext BrowserDownloadRequired(url = url)
+        }
         if (response.code !in 200..299 || response.body.isEmpty()) return@withContext null
 
         val isZip = response.contentType?.contains("zip", ignoreCase = true) == true ||
             (response.body.size > 3 && response.body[0] == 0x50.toByte() && response.body[1] == 0x4B.toByte())
+
+        if (!isZip && response.contentType?.contains("text/html", ignoreCase = true) == true) {
+            return@withContext BrowserDownloadRequired(url = url)
+        }
 
         if (isZip) return@withContext firstSubtitleFromZip(response.body)
 

@@ -5,5 +5,5 @@ interface OnlineSubtitleProvider {
 
     suspend fun search(request: SubtitleSearchRequest): List<OnlineSubtitleResult>
 
-    suspend fun download(result: OnlineSubtitleResult): DownloadedSubtitle?
+    suspend fun download(result: OnlineSubtitleResult): OnlineSubtitleDownloadResult?
 }

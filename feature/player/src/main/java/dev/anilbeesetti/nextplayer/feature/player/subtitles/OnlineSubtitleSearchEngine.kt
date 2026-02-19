@@ -39,7 +39,7 @@ class OnlineSubtitleSearchEngine(
         return@coroutineScope resultMutex.withLock { sortAndDistinctResults(mergedResults) }
     }
 
-    suspend fun download(result: OnlineSubtitleResult): DownloadedSubtitle? {
+    suspend fun download(result: OnlineSubtitleResult): OnlineSubtitleDownloadResult? {
         val provider = providers.firstOrNull { it.source == result.source } ?: return null
         return runCatching { provider.download(result) }.getOrNull()
     }
@@ -48,8 +48,10 @@ class OnlineSubtitleSearchEngine(
         SubtitleSource.SUBDB -> 0
         SubtitleSource.OPENSUBTITLES -> 1
         SubtitleSource.MOVIESUBTITLES -> 2
-        SubtitleSource.SUBDL -> 3
-        SubtitleSource.YIFY -> 4
+        SubtitleSource.MOVIESUBTITLESRT -> 3
+        SubtitleSource.PODNAPISI -> 4
+        SubtitleSource.SUBDL -> 5
+        SubtitleSource.YIFY -> 6
     }
 
     private fun sortAndDistinctResults(results: List<OnlineSubtitleResult>): List<OnlineSubtitleResult> {

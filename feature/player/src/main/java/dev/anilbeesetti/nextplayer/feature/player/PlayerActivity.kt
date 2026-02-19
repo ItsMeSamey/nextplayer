@@ -50,9 +50,14 @@ import dev.anilbeesetti.nextplayer.feature.player.subtitles.OnlineSubtitleResult
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.OnlineSubtitleSearchEngine
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.OpenSubtitlesRestProvider
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.MoviesSubtitlesOrgProvider
+import dev.anilbeesetti.nextplayer.feature.player.subtitles.MoviesSubtitlesRtProvider
+import dev.anilbeesetti.nextplayer.feature.player.subtitles.BrowserDownloadRequired
+import dev.anilbeesetti.nextplayer.feature.player.subtitles.DownloadedSubtitle
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.SubDbProvider
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.SubdlProvider
+import dev.anilbeesetti.nextplayer.feature.player.subtitles.PodnapisiProvider
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.YifySubtitlesProvider
+import dev.anilbeesetti.nextplayer.feature.player.subtitles.firstSubtitleFromZip
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.SubtitleSource
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.SubtitleSearchRequest
 import dev.anilbeesetti.nextplayer.feature.player.ui.SubtitleSourceStatusUi
@@ -98,6 +103,7 @@ class PlayerActivity : ComponentActivity() {
     private val playbackStateListener: Player.Listener = playbackStateListener()
 
     private val subtitleFileSuspendLauncher = registerForSuspendActivityResult(OpenDocument())
+    private var shouldPromptSubtitleImportAfterBrowserDownload: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -222,18 +228,9 @@ class PlayerActivity : ComponentActivity() {
                         onSelectSubtitleClick = {
                             lifecycleScope.launch {
                                 val uri = subtitleFileSuspendLauncher.launch(
-                                    arrayOf(
-                                        MimeTypes.APPLICATION_SUBRIP,
-                                        MimeTypes.APPLICATION_TTML,
-                                        MimeTypes.TEXT_VTT,
-                                        MimeTypes.TEXT_SSA,
-                                        MimeTypes.BASE_TYPE_APPLICATION + "/octet-stream",
-                                        MimeTypes.BASE_TYPE_TEXT + "/*",
-                                    ),
+                                    subtitleDocumentMimeTypes(),
                                 ) ?: return@launch
-                                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                maybeInitControllerFuture()
-                                controllerFuture?.await()?.addSubtitleTrack(uri)
+                                importSelectedSubtitle(uri)
                             }
                         },
                         onSearchSubtitleClick = {
@@ -268,33 +265,41 @@ class PlayerActivity : ComponentActivity() {
                             lifecycleScope.launch {
                                 onlineSubtitleSearchLoading = true
                                 onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_search_downloading)
-                                val downloadedSubtitle = onlineSubtitleSearchEngine.download(result)
-                                if (downloadedSubtitle == null) {
-                                    onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_download_failed)
-                                    onlineSubtitleSearchLoading = false
-                                    return@launch
-                                }
-
-                                val subtitleFile = File(subtitleCacheDir, downloadedSubtitle.fileName.sanitizeAsFilename())
-                                runCatching {
-                                    subtitleFile.outputStream().use { output ->
-                                        output.write(downloadedSubtitle.bytes)
+                                when (val downloadResult = onlineSubtitleSearchEngine.download(result)) {
+                                    null -> {
+                                        onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_download_failed)
                                     }
-                                }.onFailure {
-                                    onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_download_failed)
-                                    onlineSubtitleSearchLoading = false
-                                    return@launch
-                                }
 
-                                maybeInitControllerFuture()
-                                controllerFuture?.await()?.addSubtitleTrack(subtitleFile.toUri())
-                                val sourceKey = result.downloadUrl ?: result.id
-                                mediaRepository.addDownloadedSubtitle(
-                                    sourceKey = sourceKey,
-                                    subtitleUri = subtitleFile.toUri().toString(),
-                                )
+                                    is BrowserDownloadRequired -> {
+                                        shouldPromptSubtitleImportAfterBrowserDownload = true
+                                        onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_download_browser_required)
+                                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(downloadResult.url)))
+                                    }
+
+                                    is DownloadedSubtitle -> {
+                                        val downloadedSubtitle = downloadResult
+                                        val subtitleFile = File(subtitleCacheDir, downloadedSubtitle.fileName.sanitizeAsFilename())
+                                        runCatching {
+                                            subtitleFile.outputStream().use { output ->
+                                                output.write(downloadedSubtitle.bytes)
+                                            }
+                                        }.onFailure {
+                                            onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_download_failed)
+                                            onlineSubtitleSearchLoading = false
+                                            return@launch
+                                        }
+
+                                        maybeInitControllerFuture()
+                                        controllerFuture?.await()?.addSubtitleTrack(subtitleFile.toUri())
+                                        val sourceKey = result.downloadUrl ?: result.id
+                                        mediaRepository.addDownloadedSubtitle(
+                                            sourceKey = sourceKey,
+                                            subtitleUri = subtitleFile.toUri().toString(),
+                                        )
+                                        onlineSubtitleError = null
+                                    }
+                                }
                                 onlineSubtitleSearchLoading = false
-                                onlineSubtitleError = null
                             }
                         },
                         onOnlineSubtitleRemoveDownloadedClick = { result ->
@@ -323,6 +328,8 @@ class PlayerActivity : ComponentActivity() {
                 SubDbProvider(contentResolver),
                 OpenSubtitlesRestProvider(contentResolver),
                 MoviesSubtitlesOrgProvider(),
+                MoviesSubtitlesRtProvider(),
+                PodnapisiProvider(),
                 SubdlProvider(),
                 YifySubtitlesProvider(),
             ),
@@ -340,6 +347,16 @@ class PlayerActivity : ComponentActivity() {
                 addListener(playbackStateListener)
                 startPlayback()
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!shouldPromptSubtitleImportAfterBrowserDownload) return
+        shouldPromptSubtitleImportAfterBrowserDownload = false
+        lifecycleScope.launch {
+            val subtitleUri = subtitleFileSuspendLauncher.launch(subtitleDocumentMimeTypes()) ?: return@launch
+            importSelectedSubtitle(subtitleUri)
         }
     }
 
@@ -547,6 +564,50 @@ class PlayerActivity : ComponentActivity() {
         }
     }
 
+    private fun subtitleDocumentMimeTypes(): Array<String> {
+        return arrayOf(
+            MimeTypes.APPLICATION_SUBRIP,
+            MimeTypes.APPLICATION_TTML,
+            MimeTypes.TEXT_VTT,
+            MimeTypes.TEXT_SSA,
+            "application/zip",
+            "application/x-zip-compressed",
+            MimeTypes.BASE_TYPE_APPLICATION + "/octet-stream",
+            MimeTypes.BASE_TYPE_TEXT + "/*",
+        )
+    }
+
+    private suspend fun importSelectedSubtitle(uri: Uri) {
+        runCatching {
+            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        val subtitleUri = withContext(Dispatchers.IO) { maybeExtractSubtitleFromZip(uri) } ?: uri
+        maybeInitControllerFuture()
+        controllerFuture?.await()?.addSubtitleTrack(subtitleUri)
+    }
+
+    private fun maybeExtractSubtitleFromZip(uri: Uri): Uri? {
+        val fileName = getFilenameFromUri(uri)
+        val mimeType = contentResolver.getType(uri).orEmpty()
+        val likelyZip = fileName.endsWith(".zip", ignoreCase = true) ||
+            mimeType.contains("zip", ignoreCase = true)
+        if (!likelyZip) return null
+
+        val bytes = runCatching {
+            contentResolver.openInputStream(uri)?.use { input -> input.readBytes() }
+        }.getOrNull() ?: return null
+
+        val extracted = firstSubtitleFromZip(bytes) ?: return null
+        val subtitleFile = File(subtitleCacheDir, extracted.fileName.sanitizeAsFilename())
+        runCatching {
+            subtitleFile.outputStream().use { output ->
+                output.write(extracted.bytes)
+            }
+        }.getOrNull() ?: return null
+        return subtitleFile.toUri()
+    }
+
     override fun onWindowAttributesChanged(params: WindowManager.LayoutParams?) {
         super.onWindowAttributesChanged(params)
         for (listener in onWindowAttributesChangedListener) {
@@ -569,6 +630,8 @@ private fun enabledOnlineSubtitleSources(preferences: PlayerPreferences?): List<
         if (preferences.onlineSubtitleSourceSubDbEnabled) add(SubtitleSource.SUBDB)
         if (preferences.onlineSubtitleSourceOpenSubtitlesEnabled) add(SubtitleSource.OPENSUBTITLES)
         if (preferences.onlineSubtitleSourceMovieSubtitlesEnabled) add(SubtitleSource.MOVIESUBTITLES)
+        if (preferences.onlineSubtitleSourceMovieSubtitlesRtEnabled) add(SubtitleSource.MOVIESUBTITLESRT)
+        if (preferences.onlineSubtitleSourcePodnapisiEnabled) add(SubtitleSource.PODNAPISI)
         if (preferences.onlineSubtitleSourceSubdlEnabled) add(SubtitleSource.SUBDL)
         if (preferences.onlineSubtitleSourceYifyEnabled) add(SubtitleSource.YIFY)
     }

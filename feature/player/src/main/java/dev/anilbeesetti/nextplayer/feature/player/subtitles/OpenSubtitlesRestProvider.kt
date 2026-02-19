@@ -29,7 +29,7 @@ class OpenSubtitlesRestProvider(
         return@withContext searchByQuery(query = query, preferredLanguage = preferredLanguage).take(80)
     }
 
-    override suspend fun download(result: OnlineSubtitleResult): DownloadedSubtitle? = withContext(Dispatchers.IO) {
+    override suspend fun download(result: OnlineSubtitleResult): OnlineSubtitleDownloadResult? = withContext(Dispatchers.IO) {
         val url = result.downloadUrl ?: return@withContext null
         val response = runCatching {
             httpGet(

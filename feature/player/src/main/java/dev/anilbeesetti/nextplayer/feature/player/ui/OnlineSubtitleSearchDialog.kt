@@ -211,6 +211,8 @@ private fun SubtitleSource.label(): String = when (this) {
     SubtitleSource.SUBDB -> "SubDB"
     SubtitleSource.OPENSUBTITLES -> "OpenSubtitles"
     SubtitleSource.MOVIESUBTITLES -> "MovieSubtitles"
+    SubtitleSource.MOVIESUBTITLESRT -> "MovieSubtitlesRT"
+    SubtitleSource.PODNAPISI -> "Podnapisi"
     SubtitleSource.SUBDL -> "SubDL"
     SubtitleSource.YIFY -> "YIFY Subtitles"
 }

@@ -50,6 +50,8 @@ class SubtitlePreferencesViewModel @Inject constructor(
             SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceSubDb -> toggleOnlineSubtitleSourceSubDb()
             SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceOpenSubtitles -> toggleOnlineSubtitleSourceOpenSubtitles()
             SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceMovieSubtitles -> toggleOnlineSubtitleSourceMovieSubtitles()
+            SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceMovieSubtitlesRt -> toggleOnlineSubtitleSourceMovieSubtitlesRt()
+            SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourcePodnapisi -> toggleOnlineSubtitleSourcePodnapisi()
             SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceSubdl -> toggleOnlineSubtitleSourceSubdl()
             SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceYify -> toggleOnlineSubtitleSourceYify()
         }
@@ -153,6 +155,22 @@ class SubtitlePreferencesViewModel @Inject constructor(
         }
     }
 
+    private fun toggleOnlineSubtitleSourceMovieSubtitlesRt() {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(onlineSubtitleSourceMovieSubtitlesRtEnabled = !it.onlineSubtitleSourceMovieSubtitlesRtEnabled)
+            }
+        }
+    }
+
+    private fun toggleOnlineSubtitleSourcePodnapisi() {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(onlineSubtitleSourcePodnapisiEnabled = !it.onlineSubtitleSourcePodnapisiEnabled)
+            }
+        }
+    }
+
     private fun toggleOnlineSubtitleSourceSubdl() {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
@@ -197,6 +215,8 @@ sealed interface SubtitlePreferencesUiEvent {
     data object ToggleOnlineSubtitleSourceSubDb : SubtitlePreferencesUiEvent
     data object ToggleOnlineSubtitleSourceOpenSubtitles : SubtitlePreferencesUiEvent
     data object ToggleOnlineSubtitleSourceMovieSubtitles : SubtitlePreferencesUiEvent
+    data object ToggleOnlineSubtitleSourceMovieSubtitlesRt : SubtitlePreferencesUiEvent
+    data object ToggleOnlineSubtitleSourcePodnapisi : SubtitlePreferencesUiEvent
     data object ToggleOnlineSubtitleSourceSubdl : SubtitlePreferencesUiEvent
     data object ToggleOnlineSubtitleSourceYify : SubtitlePreferencesUiEvent
 }

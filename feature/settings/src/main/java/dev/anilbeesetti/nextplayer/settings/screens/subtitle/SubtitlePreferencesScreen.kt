@@ -145,6 +145,18 @@ private fun SubtitlePreferencesContent(
                     onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceMovieSubtitles) },
                 )
                 PreferenceSwitchWithDivider(
+                    title = stringResource(R.string.subtitle_source_moviesubtitlesrt),
+                    icon = NextIcons.Search,
+                    isChecked = uiState.preferences.onlineSubtitleSourceMovieSubtitlesRtEnabled,
+                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceMovieSubtitlesRt) },
+                )
+                PreferenceSwitchWithDivider(
+                    title = stringResource(R.string.subtitle_source_podnapisi),
+                    icon = NextIcons.Search,
+                    isChecked = uiState.preferences.onlineSubtitleSourcePodnapisiEnabled,
+                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourcePodnapisi) },
+                )
+                PreferenceSwitchWithDivider(
                     title = stringResource(R.string.subtitle_source_subdl),
                     icon = NextIcons.Search,
                     isChecked = uiState.preferences.onlineSubtitleSourceSubdlEnabled,

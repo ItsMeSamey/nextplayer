@@ -83,6 +83,7 @@ fun BoxScope.OverlayView(
             Column(
                 modifier = Modifier
                     .padding(top = 24.dp)
+                    .imePadding()
                     .padding(end = endPadding),
             ) {
                 Row(

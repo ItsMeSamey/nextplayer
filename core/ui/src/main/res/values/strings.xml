@@ -288,6 +288,8 @@
     <string name="subtitle_source_subdb">SubDB</string>
     <string name="subtitle_source_opensubtitles">OpenSubtitles</string>
     <string name="subtitle_source_moviesubtitles">MovieSubtitles</string>
+    <string name="subtitle_source_moviesubtitlesrt">MovieSubtitlesRT</string>
+    <string name="subtitle_source_podnapisi">Podnapisi</string>
     <string name="subtitle_source_subdl">SubDL</string>
     <string name="subtitle_source_yify">YIFY Subtitles</string>
     <string name="no_online_subtitle_sources_enabled">Enable at least one subtitle source.</string>
@@ -295,6 +297,7 @@
     <string name="subtitle_search_failed">Failed to search subtitles.</string>
     <string name="subtitle_search_downloading">Downloading subtitle…</string>
     <string name="subtitle_download_failed">Failed to download subtitle.</string>
+    <string name="subtitle_download_browser_required">Open browser to pass Cloudflare challenge, then select the downloaded subtitle file.</string>
     <string name="search_videos_and_folders">Search videos and folders</string>
     <string name="recent_searches">Recent searches</string>
     <string name="popular_folders">Popular folders</string>

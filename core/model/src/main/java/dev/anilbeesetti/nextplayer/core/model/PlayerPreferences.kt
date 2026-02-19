@@ -50,6 +50,8 @@ data class PlayerPreferences(
     val onlineSubtitleSourceSubDbEnabled: Boolean = true,
     val onlineSubtitleSourceOpenSubtitlesEnabled: Boolean = true,
     val onlineSubtitleSourceMovieSubtitlesEnabled: Boolean = true,
+    val onlineSubtitleSourceMovieSubtitlesRtEnabled: Boolean = true,
+    val onlineSubtitleSourcePodnapisiEnabled: Boolean = true,
     val onlineSubtitleSourceSubdlEnabled: Boolean = true,
     val onlineSubtitleSourceYifyEnabled: Boolean = true,
     val subtitleTextEncoding: String = "",
