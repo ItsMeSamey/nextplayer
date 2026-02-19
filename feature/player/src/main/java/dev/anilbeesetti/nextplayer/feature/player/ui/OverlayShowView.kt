@@ -1,6 +1,7 @@
 package dev.anilbeesetti.nextplayer.feature.player.ui
 
 import android.content.res.Configuration
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
@@ -21,6 +22,7 @@ fun BoxScope.OverlayShowView(
     onAudioDelayOptionEvent: (AudioDelayOptionsEvent) -> Unit = {},
     onOpenAudioDelayClick: () -> Unit = {},
     onSelectSubtitleClick: () -> Unit = {},
+    onRemoveSubtitleClick: (Uri) -> Unit = {},
     onSearchSubtitleClick: () -> Unit = {},
     onOpenSubtitleDelayClick: () -> Unit = {},
     onlineSubtitleQuery: String = "",
@@ -70,6 +72,7 @@ fun BoxScope.OverlayShowView(
         show = overlayView == OverlayView.SUBTITLE_SELECTOR,
         player = player,
         onSelectSubtitleClick = onSelectSubtitleClick,
+        onRemoveSubtitleClick = onRemoveSubtitleClick,
         onSearchSubtitleClick = onSearchSubtitleClick,
         onOpenDelayClick = onOpenSubtitleDelayClick,
         onEvent = onSubtitleOptionEvent,

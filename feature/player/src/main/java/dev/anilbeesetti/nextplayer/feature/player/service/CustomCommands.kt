@@ -8,6 +8,7 @@ import kotlinx.coroutines.guava.await
 
 enum class CustomCommands(val customAction: String) {
     ADD_SUBTITLE_TRACK(customAction = "ADD_SUBTITLE_TRACK"),
+    REMOVE_SUBTITLE_TRACK(customAction = "REMOVE_SUBTITLE_TRACK"),
     SET_SKIP_SILENCE_ENABLED(customAction = "SET_SKIP_SILENCE_ENABLED"),
     GET_SKIP_SILENCE_ENABLED(customAction = "GET_SKIP_SILENCE_ENABLED"),
     SET_IS_SCRUBBING_MODE_ENABLED(customAction = "SET_IS_SCRUBBING_MODE_ENABLED"),
@@ -46,6 +47,13 @@ fun MediaController.addSubtitleTrack(uri: Uri) {
         putString(CustomCommands.SUBTITLE_TRACK_URI_KEY, uri.toString())
     }
     sendCustomCommand(CustomCommands.ADD_SUBTITLE_TRACK.sessionCommand, args)
+}
+
+fun MediaController.removeSubtitleTrack(uri: Uri) {
+    val args = Bundle().apply {
+        putString(CustomCommands.SUBTITLE_TRACK_URI_KEY, uri.toString())
+    }
+    sendCustomCommand(CustomCommands.REMOVE_SUBTITLE_TRACK.sessionCommand, args)
 }
 
 suspend fun MediaController.setSkipSilenceEnabled(enabled: Boolean) {

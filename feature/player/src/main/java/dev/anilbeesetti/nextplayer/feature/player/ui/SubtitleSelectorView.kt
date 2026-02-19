@@ -1,5 +1,6 @@
 package dev.anilbeesetti.nextplayer.feature.player.ui
 
+import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
@@ -39,6 +40,7 @@ fun BoxScope.SubtitleSelectorView(
     player: Player,
     onSelectSubtitleClick: () -> Unit,
     onSearchSubtitleClick: () -> Unit,
+    onRemoveSubtitleClick: (Uri) -> Unit = {},
     onOpenDelayClick: () -> Unit = {},
     onEvent: (SubtitleOptionsEvent) -> Unit = {},
     onDismiss: () -> Unit,
@@ -58,12 +60,23 @@ fun BoxScope.SubtitleSelectorView(
                 .selectableGroup(),
         ) {
             subtitleTracksState.tracks.forEachIndexed { index, track ->
+                val removableSubtitleUri = track.removableSubtitleUri()
                 RadioButtonRow(
                     selected = track.isSelected,
                     text = track.mediaTrackGroup.getName(C.TRACK_TYPE_TEXT, index),
                     onClick = {
                         subtitleTracksState.switchTrack(index)
                         onDismiss()
+                    },
+                    trailingContent = removableSubtitleUri?.let { uri ->
+                        {
+                            FilledTonalIconButton(onClick = { onRemoveSubtitleClick(uri) }) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_close),
+                                    contentDescription = stringResource(R.string.delete),
+                                )
+                            }
+                        }
                     },
                 )
             }
@@ -115,4 +128,10 @@ fun BoxScope.SubtitleSelectorView(
             }
         }
     }
+}
+
+private fun androidx.media3.common.Tracks.Group.removableSubtitleUri(): Uri? {
+    val id = mediaTrackGroup.getFormat(0).id ?: return null
+    val uri = runCatching { Uri.parse(id) }.getOrNull() ?: return null
+    return if (uri.scheme == "file" || uri.scheme == "content") uri else null
 }

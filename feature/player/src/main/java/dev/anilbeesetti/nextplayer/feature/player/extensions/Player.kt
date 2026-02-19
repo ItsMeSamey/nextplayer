@@ -89,6 +89,24 @@ fun Player.addAdditionalSubtitleConfiguration(subtitle: MediaItem.SubtitleConfig
     removeMediaItem(index)
 }
 
+fun Player.removeAdditionalSubtitleConfiguration(subtitleId: String) {
+    if (subtitleId.isBlank()) return
+    val currentMediaItemLocal = currentMediaItem ?: return
+    val existingSubConfigurations = currentMediaItemLocal.localConfiguration?.subtitleConfigurations ?: emptyList()
+    if (existingSubConfigurations.none { it.id == subtitleId }) return
+
+    val updatedSubConfigurations = existingSubConfigurations.filterNot { it.id == subtitleId }
+    val updatedMediaItem = currentMediaItemLocal
+        .buildUpon()
+        .setSubtitleConfigurations(updatedSubConfigurations)
+        .build()
+
+    val index = currentMediaItemIndex
+    addMediaItem(index + 1, updatedMediaItem)
+    seekToDefaultPosition(index + 1)
+    removeMediaItem(index)
+}
+
 @OptIn(UnstableApi::class)
 fun Player.setIsScrubbingModeEnabled(enabled: Boolean) {
     when (this) {

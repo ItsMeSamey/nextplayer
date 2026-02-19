@@ -13,6 +13,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts.OpenDocument
+import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
@@ -45,6 +46,7 @@ import dev.anilbeesetti.nextplayer.feature.player.extensions.setExtras
 import dev.anilbeesetti.nextplayer.feature.player.extensions.uriToSubtitleConfiguration
 import dev.anilbeesetti.nextplayer.feature.player.service.PlayerService
 import dev.anilbeesetti.nextplayer.feature.player.service.addSubtitleTrack
+import dev.anilbeesetti.nextplayer.feature.player.service.removeSubtitleTrack
 import dev.anilbeesetti.nextplayer.feature.player.service.stopPlayerSession
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.OnlineSubtitleResult
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.OnlineSubtitleSearchEngine
@@ -56,8 +58,11 @@ import dev.anilbeesetti.nextplayer.feature.player.subtitles.DownloadedSubtitle
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.SubDbProvider
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.SubdlProvider
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.PodnapisiProvider
+import dev.anilbeesetti.nextplayer.feature.player.subtitles.SubtitlecatProvider
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.YifySubtitlesProvider
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.firstSubtitleFromZip
+import dev.anilbeesetti.nextplayer.feature.player.subtitles.httpGet
+import dev.anilbeesetti.nextplayer.feature.player.subtitles.resolveFileName
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.SubtitleSource
 import dev.anilbeesetti.nextplayer.feature.player.subtitles.SubtitleSearchRequest
 import dev.anilbeesetti.nextplayer.feature.player.ui.SubtitleSourceStatusUi
@@ -103,7 +108,9 @@ class PlayerActivity : ComponentActivity() {
     private val playbackStateListener: Player.Listener = playbackStateListener()
 
     private val subtitleFileSuspendLauncher = registerForSuspendActivityResult(OpenDocument())
+    private val yifiWebViewSuspendLauncher = registerForSuspendActivityResult(StartActivityForResult())
     private var shouldPromptSubtitleImportAfterBrowserDownload: Boolean = false
+    private val yifiCookiePrefs by lazy { getSharedPreferences(PREFS_YIFI_COOKIE, MODE_PRIVATE) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -233,6 +240,14 @@ class PlayerActivity : ComponentActivity() {
                                 importSelectedSubtitle(uri)
                             }
                         },
+                        onRemoveSubtitleClick = { subtitleUri ->
+                            lifecycleScope.launch {
+                                maybeInitControllerFuture()
+                                controllerFuture?.await()?.removeSubtitleTrack(subtitleUri)
+                                releaseSubtitleUriPermission(subtitleUri)
+                                deleteSubtitleFromCacheIfExists(subtitleUri)
+                            }
+                        },
                         onSearchSubtitleClick = {
                             onlineSubtitleQuery = deriveSubtitleSearchQuery(player)
                             onlineSubtitleResults = emptyList()
@@ -277,31 +292,47 @@ class PlayerActivity : ComponentActivity() {
                                     }
 
                                     is BrowserDownloadRequired -> {
-                                        shouldPromptSubtitleImportAfterBrowserDownload = true
-                                        onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_download_browser_required)
-                                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(downloadResult.url)))
+                                        if (result.source == SubtitleSource.YIFY) {
+                                            val activityResult = yifiWebViewSuspendLauncher.launch(
+                                                YifiWebViewActivity.createIntent(this@PlayerActivity, downloadResult.url),
+                                            )
+                                            val capturedUrl = activityResult.data
+                                                ?.getStringExtra(YifiWebViewActivity.EXTRA_CAPTURED_DOWNLOAD_URL)
+                                                .orEmpty()
+                                            if (activityResult.resultCode != RESULT_OK || capturedUrl.isBlank()) {
+                                                onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_download_failed)
+                                            } else {
+                                                val capturedCookies = activityResult.data
+                                                    ?.getStringExtra(YifiWebViewActivity.EXTRA_CAPTURED_COOKIES)
+                                                    .orEmpty()
+                                                val capturedUserAgent = activityResult.data
+                                                    ?.getStringExtra(YifiWebViewActivity.EXTRA_CAPTURED_USER_AGENT)
+                                                    .orEmpty()
+                                                saveYifiSession(
+                                                    cookies = capturedCookies,
+                                                    userAgent = capturedUserAgent,
+                                                )
+                                                val downloadedSubtitle = downloadSubtitleFromUrl(
+                                                    url = capturedUrl,
+                                                    fallbackFileName = result.displayName,
+                                                    headers = yifiRequestHeaders(),
+                                                )
+                                                if (downloadedSubtitle == null) {
+                                                    onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_download_failed)
+                                                } else {
+                                                    attachDownloadedSubtitle(result, downloadedSubtitle)
+                                                    onlineSubtitleError = null
+                                                }
+                                            }
+                                        } else {
+                                            shouldPromptSubtitleImportAfterBrowserDownload = true
+                                            onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_download_browser_required)
+                                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(downloadResult.url)))
+                                        }
                                     }
 
                                     is DownloadedSubtitle -> {
-                                        val downloadedSubtitle = downloadResult
-                                        val subtitleFile = File(subtitleCacheDir, downloadedSubtitle.fileName.sanitizeAsFilename())
-                                        runCatching {
-                                            subtitleFile.outputStream().use { output ->
-                                                output.write(downloadedSubtitle.bytes)
-                                            }
-                                        }.onFailure {
-                                            onlineSubtitleError = getString(dev.anilbeesetti.nextplayer.core.ui.R.string.subtitle_download_failed)
-                                            onlineSubtitleSearchLoading = false
-                                            return@launch
-                                        }
-
-                                        maybeInitControllerFuture()
-                                        controllerFuture?.await()?.addSubtitleTrack(subtitleFile.toUri())
-                                        val sourceKey = result.downloadUrl ?: result.id
-                                        mediaRepository.addDownloadedSubtitle(
-                                            sourceKey = sourceKey,
-                                            subtitleUri = subtitleFile.toUri().toString(),
-                                        )
+                                        attachDownloadedSubtitle(result, downloadResult)
                                         onlineSubtitleError = null
                                     }
                                 }
@@ -336,8 +367,12 @@ class PlayerActivity : ComponentActivity() {
                 MoviesSubtitlesOrgProvider(),
                 MoviesSubtitlesRtProvider(),
                 PodnapisiProvider(),
+                SubtitlecatProvider(),
                 SubdlProvider(),
-                YifySubtitlesProvider(),
+                YifySubtitlesProvider(
+                    requestHeadersProvider = ::yifiRequestHeaders,
+                    onAuthExpired = ::clearYifiSession,
+                ),
             ),
         )
     }
@@ -372,7 +407,7 @@ class PlayerActivity : ComponentActivity() {
             removeListener(playbackStateListener)
         }
         val shouldPlayInBackground = playInBackground || playerPreferences?.autoBackgroundPlay == true
-        if (subtitleFileSuspendLauncher.isAwaitingResult || !shouldPlayInBackground) {
+        if (subtitleFileSuspendLauncher.isAwaitingResult || yifiWebViewSuspendLauncher.isAwaitingResult || !shouldPlayInBackground) {
             mediaController?.pause()
         }
 
@@ -614,6 +649,91 @@ class PlayerActivity : ComponentActivity() {
         return subtitleFile.toUri()
     }
 
+    private fun releaseSubtitleUriPermission(uri: Uri) {
+        if (uri.scheme != "content") return
+        runCatching {
+            contentResolver.releasePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    }
+
+    private fun deleteSubtitleFromCacheIfExists(uri: Uri) {
+        if (uri.scheme != "file") return
+        val path = uri.path ?: return
+        val subtitleFile = File(path)
+        val cacheRoot = subtitleCacheDir.absoluteFile
+        val fileInCache = runCatching {
+            subtitleFile.exists() && subtitleFile.absoluteFile.toPath().startsWith(cacheRoot.toPath())
+        }.getOrDefault(false)
+        if (fileInCache) {
+            runCatching { subtitleFile.delete() }
+        }
+    }
+
+    private suspend fun attachDownloadedSubtitle(
+        result: OnlineSubtitleResult,
+        downloadedSubtitle: DownloadedSubtitle,
+    ) {
+        val subtitleFile = File(subtitleCacheDir, downloadedSubtitle.fileName.sanitizeAsFilename())
+        subtitleFile.outputStream().use { output ->
+            output.write(downloadedSubtitle.bytes)
+        }
+
+        maybeInitControllerFuture()
+        controllerFuture?.await()?.addSubtitleTrack(subtitleFile.toUri())
+        val sourceKey = result.downloadUrl ?: result.id
+        mediaRepository.addDownloadedSubtitle(
+            sourceKey = sourceKey,
+            subtitleUri = subtitleFile.toUri().toString(),
+        )
+    }
+
+    private fun saveYifiSession(cookies: String, userAgent: String) {
+        val sanitizedCookies = cookies.trim()
+        val sanitizedUserAgent = userAgent.trim()
+        if (sanitizedCookies.isBlank() && sanitizedUserAgent.isBlank()) return
+        yifiCookiePrefs.edit()
+            .putString(KEY_YIFI_COOKIE, sanitizedCookies)
+            .putString(KEY_YIFI_USER_AGENT, sanitizedUserAgent)
+            .apply()
+    }
+
+    private fun clearYifiSession() {
+        yifiCookiePrefs.edit()
+            .remove(KEY_YIFI_COOKIE)
+            .remove(KEY_YIFI_USER_AGENT)
+            .apply()
+    }
+
+    private fun yifiRequestHeaders(): Map<String, String> {
+        val headers = mutableMapOf<String, String>()
+        val cookies = yifiCookiePrefs.getString(KEY_YIFI_COOKIE, "").orEmpty().trim()
+        val userAgent = yifiCookiePrefs.getString(KEY_YIFI_USER_AGENT, "").orEmpty().trim()
+        if (cookies.isNotBlank()) headers["Cookie"] = cookies
+        if (userAgent.isNotBlank()) headers["User-Agent"] = userAgent
+        return headers
+    }
+
+    private suspend fun downloadSubtitleFromUrl(
+        url: String,
+        fallbackFileName: String,
+        headers: Map<String, String> = emptyMap(),
+    ): DownloadedSubtitle? = withContext(Dispatchers.IO) {
+        val response = runCatching { httpGet(url, headers = headers) }.getOrNull() ?: return@withContext null
+        if (response.code !in 200..299 || response.body.isEmpty()) return@withContext null
+
+        val isZip = response.contentType?.contains("zip", ignoreCase = true) == true ||
+            (response.body.size > 3 && response.body[0] == 0x50.toByte() && response.body[1] == 0x4B.toByte())
+
+        if (isZip) return@withContext firstSubtitleFromZip(response.body)
+
+        val fileName = resolveFileName(
+            fallback = "${fallbackFileName.ifBlank { "subtitle" }}.srt",
+            headers = response.headers,
+            url = url,
+        )
+        DownloadedSubtitle(fileName = fileName, bytes = response.body)
+    }
+
     override fun onWindowAttributesChanged(params: WindowManager.LayoutParams?) {
         super.onWindowAttributesChanged(params)
         for (listener in onWindowAttributesChangedListener) {
@@ -628,6 +748,12 @@ class PlayerActivity : ComponentActivity() {
     fun removeOnWindowAttributesChangedListener(listener: Consumer<WindowManager.LayoutParams?>) {
         onWindowAttributesChangedListener.remove(listener)
     }
+
+    companion object {
+        private const val PREFS_YIFI_COOKIE = "prefs_yifi_cookie"
+        private const val KEY_YIFI_COOKIE = "key_yifi_cookie"
+        private const val KEY_YIFI_USER_AGENT = "key_yifi_user_agent"
+    }
 }
 
 private fun enabledOnlineSubtitleSources(preferences: PlayerPreferences?): List<SubtitleSource> {
@@ -638,6 +764,7 @@ private fun enabledOnlineSubtitleSources(preferences: PlayerPreferences?): List<
         if (preferences.onlineSubtitleSourceMovieSubtitlesEnabled) add(SubtitleSource.MOVIESUBTITLES)
         if (preferences.onlineSubtitleSourceMovieSubtitlesRtEnabled) add(SubtitleSource.MOVIESUBTITLESRT)
         if (preferences.onlineSubtitleSourcePodnapisiEnabled) add(SubtitleSource.PODNAPISI)
+        if (preferences.onlineSubtitleSourceSubtitlecatEnabled) add(SubtitleSource.SUBTITLECAT)
         if (preferences.onlineSubtitleSourceSubdlEnabled) add(SubtitleSource.SUBDL)
         if (preferences.onlineSubtitleSourceYifyEnabled) add(SubtitleSource.YIFY)
     }

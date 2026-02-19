@@ -22,6 +22,7 @@ fun RadioButtonRow(
     selected: Boolean,
     text: String,
     onClick: () -> Unit,
+    trailingContent: @Composable (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -43,10 +44,12 @@ fun RadioButtonRow(
             onClick = null,
         )
         Text(
+            modifier = Modifier.weight(1f),
             text = text,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
+        trailingContent?.invoke()
     }
 }

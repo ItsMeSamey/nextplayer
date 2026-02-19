@@ -59,6 +59,7 @@ import dev.anilbeesetti.nextplayer.feature.player.extensions.isAudioDelaySupport
 import dev.anilbeesetti.nextplayer.feature.player.extensions.getManuallySelectedTrackIndex
 import dev.anilbeesetti.nextplayer.feature.player.extensions.playbackSpeed
 import dev.anilbeesetti.nextplayer.feature.player.extensions.positionMs
+import dev.anilbeesetti.nextplayer.feature.player.extensions.removeAdditionalSubtitleConfiguration
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setAudioDelayMilliseconds
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setExtras
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setIsScrubbingModeEnabled
@@ -388,6 +389,22 @@ class PlayerService : MediaSessionService() {
                             subtitleUri = subtitleUri,
                         )
                         player.addAdditionalSubtitleConfiguration(newSubConfiguration)
+                    }
+                    return@future SessionResult(SessionResult.RESULT_SUCCESS)
+                }
+
+                CustomCommands.REMOVE_SUBTITLE_TRACK -> {
+                    val subtitleUri = args.getString(CustomCommands.SUBTITLE_TRACK_URI_KEY)?.toUri()
+                        ?: return@future SessionResult(SessionError.ERROR_BAD_VALUE)
+
+                    mediaSession?.player?.let { player ->
+                        val currentMediaItem = player.currentMediaItem ?: return@let
+                        mediaRepository.removeExternalSubtitleFromMedium(
+                            uri = currentMediaItem.mediaId,
+                            subtitleUri = subtitleUri,
+                        )
+                        mediaRepository.removeDownloadedSubtitleByUri(subtitleUri.toString())
+                        player.removeAdditionalSubtitleConfiguration(subtitleUri.toString())
                     }
                     return@future SessionResult(SessionResult.RESULT_SUCCESS)
                 }

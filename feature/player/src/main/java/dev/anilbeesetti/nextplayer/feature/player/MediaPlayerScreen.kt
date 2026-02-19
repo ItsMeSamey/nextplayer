@@ -1,6 +1,7 @@
 package dev.anilbeesetti.nextplayer.feature.player
 
 import android.widget.Toast
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
@@ -99,6 +100,7 @@ fun MediaPlayerScreen(
     playerPreferences: PlayerPreferences,
     modifier: Modifier = Modifier,
     onSelectSubtitleClick: () -> Unit,
+    onRemoveSubtitleClick: (Uri) -> Unit,
     onSearchSubtitleClick: () -> Unit,
     onlineSubtitleQuery: String,
     onlineSubtitleResults: List<OnlineSubtitleResult>,
@@ -402,6 +404,7 @@ fun MediaPlayerScreen(
                 onAudioDelayOptionEvent = viewModel::onAudioDelayOptionEvent,
                 onOpenAudioDelayClick = { overlayView = OverlayView.AUDIO_DELAY },
                 onSelectSubtitleClick = onSelectSubtitleClick,
+                onRemoveSubtitleClick = onRemoveSubtitleClick,
                 onOpenSubtitleDelayClick = { overlayView = OverlayView.SUBTITLE_DELAY },
                 onSearchSubtitleClick = {
                     onSearchSubtitleClick()

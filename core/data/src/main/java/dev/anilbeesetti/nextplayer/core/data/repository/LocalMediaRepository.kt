@@ -140,6 +140,22 @@ class LocalMediaRepository @Inject constructor(
         )
     }
 
+    override suspend fun removeExternalSubtitleFromMedium(uri: String, subtitleUri: Uri) {
+        val stateEntity = mediumStateDao.get(uri) ?: return
+        val currentExternalSubs = UriListConverter.fromStringToList(stateEntity.externalSubs)
+        if (!currentExternalSubs.contains(subtitleUri)) return
+        val newExternalSubs = UriListConverter.fromListToString(
+            urlList = currentExternalSubs.filterNot { it == subtitleUri },
+        )
+
+        mediumStateDao.upsert(
+            mediumState = stateEntity.copy(
+                externalSubs = newExternalSubs,
+                lastPlayedTime = System.currentTimeMillis(),
+            ),
+        )
+    }
+
     override suspend fun updateAudioDelay(uri: String, trackIndex: Int, delay: Long) {
         val stateEntity = mediumStateDao.get(uri) ?: MediumStateEntity(uriString = uri)
         val currentDelays = deserializeDelayMap(stateEntity.audioTrackDelays).toMutableMap()
@@ -203,6 +219,22 @@ class LocalMediaRepository @Inject constructor(
         )
 
         return removedSubtitleUri
+    }
+
+    override suspend fun removeDownloadedSubtitleByUri(subtitleUri: String): Boolean {
+        if (subtitleUri.isBlank()) return false
+        val stateEntity = mediumStateDao.get(DOWNLOADED_SUBTITLE_STATE_URI) ?: return false
+        val values = deserializeDownloadedSubtitles(stateEntity.downloadedSubtitles).toMutableMap()
+        val keyToRemove = values.entries.firstOrNull { it.value == subtitleUri }?.key ?: return false
+        values.remove(keyToRemove)
+
+        mediumStateDao.upsert(
+            mediumState = stateEntity.copy(
+                downloadedSubtitles = serializeDownloadedSubtitles(values),
+                lastPlayedTime = System.currentTimeMillis(),
+            ),
+        )
+        return true
     }
 
     private fun serializeDelayMap(value: Map<Int, Long>): String {

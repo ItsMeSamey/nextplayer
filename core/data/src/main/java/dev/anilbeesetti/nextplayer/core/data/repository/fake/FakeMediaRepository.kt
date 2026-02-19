@@ -57,6 +57,9 @@ class FakeMediaRepository : MediaRepository {
     override suspend fun addExternalSubtitleToMedium(uri: String, subtitleUri: Uri) {
     }
 
+    override suspend fun removeExternalSubtitleFromMedium(uri: String, subtitleUri: Uri) {
+    }
+
     override suspend fun updateAudioDelay(uri: String, trackIndex: Int, delay: Long) {
     }
 
@@ -72,5 +75,9 @@ class FakeMediaRepository : MediaRepository {
 
     override suspend fun removeDownloadedSubtitle(sourceKey: String): String? {
         return null
+    }
+
+    override suspend fun removeDownloadedSubtitleByUri(subtitleUri: String): Boolean {
+        return false
     }
 }

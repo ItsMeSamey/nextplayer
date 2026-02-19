@@ -7,6 +7,12 @@
 
     <application android:usesCleartextTraffic="true">
         <activity
+            android:name=".YifiWebViewActivity"
+            android:exported="false"
+            android:theme="@style/NextPlayer"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".PlayerActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|uiMode|keyboard|keyboardHidden|navigation"
             android:exported="true"
