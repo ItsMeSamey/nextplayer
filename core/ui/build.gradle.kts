@@ -34,8 +34,6 @@ dependencies {
     implementation(project(":core:model"))
 
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.google.android.material)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

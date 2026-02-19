@@ -90,6 +90,10 @@ android {
                 "/META-INF/*.kotlin_module",
             )
         }
+        jniLibs {
+            // Compress prebuilt native libraries to reduce delivered APK size.
+            useLegacyPackaging = true
+        }
     }
 
     dependenciesInfo {
@@ -119,7 +123,6 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.appcompat)
 
     // Compose
     implementation(platform(libs.androidx.compose.bom))

@@ -6,8 +6,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.anilbeesetti.nextplayer.core.ui.designsystem.NextIcons
 import dev.anilbeesetti.nextplayer.core.ui.theme.NextPlayerTheme
 
 @Composable
@@ -66,7 +65,7 @@ fun TextIconToggleButtonPreview() {
         Surface {
             TextIconToggleButton(
                 text = "Text",
-                icon = Icons.Rounded.Search,
+                icon = NextIcons.Search,
             )
         }
     }
