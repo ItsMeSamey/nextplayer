@@ -107,11 +107,55 @@ private fun SubtitlePreferencesContent(
                     isFirstItem = true
                 )
                 ClickablePreferenceItem(
+                    title = stringResource(R.string.online_subtitle_language),
+                    description = LocalesHelper.getLocaleDisplayLanguage(uiState.preferences.onlineSubtitleSearchLanguage)
+                        .takeIf { it.isNotBlank() } ?: stringResource(R.string.online_subtitle_language_description),
+                    icon = NextIcons.Search,
+                    onClick = { onEvent(SubtitlePreferencesUiEvent.ShowDialog(SubtitlePreferenceDialog.OnlineSubtitleLanguageDialog)) },
+                )
+                ClickablePreferenceItem(
                     title = stringResource(R.string.subtitle_text_encoding),
                     description = charsetResource.first { it.contains(uiState.preferences.subtitleTextEncoding) },
                     icon = NextIcons.Subtitle,
                     onClick = { onEvent(SubtitlePreferencesUiEvent.ShowDialog(SubtitlePreferenceDialog.SubtitleEncodingDialog)) },
                     isLastItem = true
+                )
+            }
+            ListSectionTitle(text = stringResource(R.string.online_subtitle_sources))
+            Column(
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+            ) {
+                PreferenceSwitchWithDivider(
+                    title = stringResource(R.string.subtitle_source_subdb),
+                    icon = NextIcons.Search,
+                    isChecked = uiState.preferences.onlineSubtitleSourceSubDbEnabled,
+                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceSubDb) },
+                    isFirstItem = true,
+                )
+                PreferenceSwitchWithDivider(
+                    title = stringResource(R.string.subtitle_source_opensubtitles),
+                    icon = NextIcons.Search,
+                    isChecked = uiState.preferences.onlineSubtitleSourceOpenSubtitlesEnabled,
+                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceOpenSubtitles) },
+                )
+                PreferenceSwitchWithDivider(
+                    title = stringResource(R.string.subtitle_source_moviesubtitles),
+                    icon = NextIcons.Search,
+                    isChecked = uiState.preferences.onlineSubtitleSourceMovieSubtitlesEnabled,
+                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceMovieSubtitles) },
+                )
+                PreferenceSwitchWithDivider(
+                    title = stringResource(R.string.subtitle_source_subdl),
+                    icon = NextIcons.Search,
+                    isChecked = uiState.preferences.onlineSubtitleSourceSubdlEnabled,
+                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceSubdl) },
+                )
+                PreferenceSwitch(
+                    title = stringResource(R.string.subtitle_source_yify),
+                    icon = NextIcons.Search,
+                    isChecked = uiState.preferences.onlineSubtitleSourceYifyEnabled,
+                    onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceYify) },
+                    isLastItem = true,
                 )
             }
             ListSectionTitle(text = stringResource(id = R.string.appearance_name))
@@ -214,6 +258,24 @@ private fun SubtitlePreferencesContent(
                                 selected = it == uiState.preferences.subtitleFont,
                                 onClick = {
                                     onEvent(SubtitlePreferencesUiEvent.UpdateSubtitleFont(it))
+                                    onEvent(SubtitlePreferencesUiEvent.ShowDialog(null))
+                                },
+                            )
+                        }
+                    }
+                }
+
+                SubtitlePreferenceDialog.OnlineSubtitleLanguageDialog -> {
+                    OptionsDialog(
+                        text = stringResource(id = R.string.online_subtitle_language),
+                        onDismissClick = { onEvent(SubtitlePreferencesUiEvent.ShowDialog(null)) },
+                    ) {
+                        items(languages) {
+                            RadioTextButton(
+                                text = it.first,
+                                selected = it.second == uiState.preferences.onlineSubtitleSearchLanguage,
+                                onClick = {
+                                    onEvent(SubtitlePreferencesUiEvent.UpdateOnlineSubtitleLanguage(it.second))
                                     onEvent(SubtitlePreferencesUiEvent.ShowDialog(null))
                                 },
                             )

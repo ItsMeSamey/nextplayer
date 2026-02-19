@@ -46,6 +46,12 @@ data class PlayerPreferences(
     // Subtitle Preferences
     val useSystemCaptionStyle: Boolean = false,
     val preferredSubtitleLanguage: String = "",
+    val onlineSubtitleSearchLanguage: String = "",
+    val onlineSubtitleSourceSubDbEnabled: Boolean = true,
+    val onlineSubtitleSourceOpenSubtitlesEnabled: Boolean = true,
+    val onlineSubtitleSourceMovieSubtitlesEnabled: Boolean = true,
+    val onlineSubtitleSourceSubdlEnabled: Boolean = true,
+    val onlineSubtitleSourceYifyEnabled: Boolean = true,
     val subtitleTextEncoding: String = "",
     val subtitleTextSize: Int = DEFAULT_SUBTITLE_TEXT_SIZE,
     val subtitleBackground: Boolean = false,

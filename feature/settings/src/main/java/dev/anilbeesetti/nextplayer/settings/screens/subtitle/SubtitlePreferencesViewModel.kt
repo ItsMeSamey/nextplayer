@@ -39,6 +39,7 @@ class SubtitlePreferencesViewModel @Inject constructor(
         when (event) {
             is SubtitlePreferencesUiEvent.ShowDialog -> showDialog(event.value)
             is SubtitlePreferencesUiEvent.UpdateSubtitleLanguage -> updateSubtitleLanguage(event.value)
+            is SubtitlePreferencesUiEvent.UpdateOnlineSubtitleLanguage -> updateOnlineSubtitleLanguage(event.value)
             is SubtitlePreferencesUiEvent.UpdateSubtitleFont -> updateSubtitleFont(event.value)
             SubtitlePreferencesUiEvent.ToggleSubtitleTextBold -> toggleSubtitleTextBold()
             is SubtitlePreferencesUiEvent.UpdateSubtitleFontSize -> updateSubtitleFontSize(event.value)
@@ -46,6 +47,11 @@ class SubtitlePreferencesViewModel @Inject constructor(
             SubtitlePreferencesUiEvent.ToggleApplyEmbeddedStyles -> toggleApplyEmbeddedStyles()
             is SubtitlePreferencesUiEvent.UpdateSubtitleEncoding -> updateSubtitleEncoding(event.value)
             SubtitlePreferencesUiEvent.ToggleUseSystemCaptionStyle -> toggleUseSystemCaptionStyle()
+            SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceSubDb -> toggleOnlineSubtitleSourceSubDb()
+            SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceOpenSubtitles -> toggleOnlineSubtitleSourceOpenSubtitles()
+            SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceMovieSubtitles -> toggleOnlineSubtitleSourceMovieSubtitles()
+            SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceSubdl -> toggleOnlineSubtitleSourceSubdl()
+            SubtitlePreferencesUiEvent.ToggleOnlineSubtitleSourceYify -> toggleOnlineSubtitleSourceYify()
         }
     }
 
@@ -59,6 +65,14 @@ class SubtitlePreferencesViewModel @Inject constructor(
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
                 it.copy(preferredSubtitleLanguage = value)
+            }
+        }
+    }
+
+    private fun updateOnlineSubtitleLanguage(value: String) {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(onlineSubtitleSearchLanguage = value)
             }
         }
     }
@@ -114,6 +128,46 @@ class SubtitlePreferencesViewModel @Inject constructor(
             preferencesRepository.updatePlayerPreferences { it.copy(useSystemCaptionStyle = !it.useSystemCaptionStyle) }
         }
     }
+
+    private fun toggleOnlineSubtitleSourceSubDb() {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(onlineSubtitleSourceSubDbEnabled = !it.onlineSubtitleSourceSubDbEnabled)
+            }
+        }
+    }
+
+    private fun toggleOnlineSubtitleSourceOpenSubtitles() {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(onlineSubtitleSourceOpenSubtitlesEnabled = !it.onlineSubtitleSourceOpenSubtitlesEnabled)
+            }
+        }
+    }
+
+    private fun toggleOnlineSubtitleSourceMovieSubtitles() {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(onlineSubtitleSourceMovieSubtitlesEnabled = !it.onlineSubtitleSourceMovieSubtitlesEnabled)
+            }
+        }
+    }
+
+    private fun toggleOnlineSubtitleSourceSubdl() {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(onlineSubtitleSourceSubdlEnabled = !it.onlineSubtitleSourceSubdlEnabled)
+            }
+        }
+    }
+
+    private fun toggleOnlineSubtitleSourceYify() {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(onlineSubtitleSourceYifyEnabled = !it.onlineSubtitleSourceYifyEnabled)
+            }
+        }
+    }
 }
 
 @Stable
@@ -124,6 +178,7 @@ data class SubtitlePreferencesUiState(
 
 sealed interface SubtitlePreferenceDialog {
     data object SubtitleLanguageDialog : SubtitlePreferenceDialog
+    data object OnlineSubtitleLanguageDialog : SubtitlePreferenceDialog
     data object SubtitleFontDialog : SubtitlePreferenceDialog
     data object SubtitleEncodingDialog : SubtitlePreferenceDialog
 }
@@ -131,6 +186,7 @@ sealed interface SubtitlePreferenceDialog {
 sealed interface SubtitlePreferencesUiEvent {
     data class ShowDialog(val value: SubtitlePreferenceDialog?) : SubtitlePreferencesUiEvent
     data class UpdateSubtitleLanguage(val value: String) : SubtitlePreferencesUiEvent
+    data class UpdateOnlineSubtitleLanguage(val value: String) : SubtitlePreferencesUiEvent
     data class UpdateSubtitleFont(val value: Font) : SubtitlePreferencesUiEvent
     data object ToggleSubtitleTextBold : SubtitlePreferencesUiEvent
     data class UpdateSubtitleFontSize(val value: Int) : SubtitlePreferencesUiEvent
@@ -138,4 +194,9 @@ sealed interface SubtitlePreferencesUiEvent {
     data object ToggleApplyEmbeddedStyles : SubtitlePreferencesUiEvent
     data class UpdateSubtitleEncoding(val value: String) : SubtitlePreferencesUiEvent
     data object ToggleUseSystemCaptionStyle : SubtitlePreferencesUiEvent
+    data object ToggleOnlineSubtitleSourceSubDb : SubtitlePreferencesUiEvent
+    data object ToggleOnlineSubtitleSourceOpenSubtitles : SubtitlePreferencesUiEvent
+    data object ToggleOnlineSubtitleSourceMovieSubtitles : SubtitlePreferencesUiEvent
+    data object ToggleOnlineSubtitleSourceSubdl : SubtitlePreferencesUiEvent
+    data object ToggleOnlineSubtitleSourceYify : SubtitlePreferencesUiEvent
 }
